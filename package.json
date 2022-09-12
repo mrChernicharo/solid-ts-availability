@@ -18,6 +18,7 @@
     "vite-plugin-solid": "^2.3.0"
   },
   "dependencies": {
+    "@melodev/id-maker": "^1.0.1",
     "@solid-primitives/pointer": "^0.2.1",
     "solid-js": "^1.5.1"
   }
