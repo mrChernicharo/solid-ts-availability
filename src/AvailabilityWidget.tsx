@@ -3,7 +3,7 @@ import { batch, Component, createEffect, createMemo, createSignal, For, Show } f
 import { createStore } from "solid-js/store";
 import { SCROLL_BAR, THEME } from "./lib/constants";
 import { IWeekday, IPalette, IStore } from "./lib/types";
-import { getLocaleHours, yPosToTime } from "./lib/utils";
+import { getLocaleHours, getWeekDays, readableTime, yPosToTime } from "./lib/utils";
 // @ts-ignore
 import idMaker from "@melodev/id-maker";
 
@@ -28,6 +28,12 @@ export default function AvailabilityWidget(props: IProps) {
   let containerRef!: HTMLDivElement;
   const HOURS = createMemo(() => getLocaleHours(props.minHour, props.maxHour, props.locale));
   const yTime = (y: number) => yPosToTime(y, props.minHour, props.maxHour, props.colHeight);
+  const readable = (time: number) => readableTime(time, props.locale);
+
+  const DAY_COLS = () =>
+    getWeekDays(props.dayCols, {
+      firstDay: props.firstDay,
+    }) as IWeekday[];
 
   const [widgetWidth, setWidgetWidth] = createSignal(0);
   const [widgetTop, setWidgetTop] = createSignal(0);
@@ -43,17 +49,22 @@ export default function AvailabilityWidget(props: IProps) {
         id: idMaker(),
         start: props.minHour * 60,
         end: props.minHour * 60 + 60,
-        height: props.colHeight / (props.maxHour - props.minHour),
+        height: props.colHeight / (props.maxHour - props.minHour), // 1 hour
         top: 0,
       },
-      // { id: idMaker(), height: 50, y: 300 },
     ],
     Tue: [],
-    Wed: [],
-    Thu: [],
-    Fri: [
-      // { id: idMaker(), height: 50, y: 100 }
+    Wed: [
+      {
+        id: idMaker(),
+        start: props.minHour + 1 * 60,
+        end: props.minHour + 3 * 60,
+        height: (props.colHeight / (props.maxHour - props.minHour)) * 2, // 2 hours
+        top: props.colHeight / (props.maxHour - props.minHour),
+      },
     ],
+    Thu: [],
+    Fri: [],
     Sat: [],
   });
 
@@ -81,9 +92,9 @@ export default function AvailabilityWidget(props: IProps) {
   createPerPointerListeners({
     target: () => document.body,
     onEnter(e, { onDown, onMove, onUp, onLeave }) {
-      let last: { x: number; y: number; time: number } | null;
+      let last: { x: number; y: number } | null;
       onDown(({ x, y }) => {
-        last = { x, y, time: yTime(y) };
+        last = { x, y };
         // last = { x: offsetX, y: y - widgetTop() - props.headerHeight };
       });
       onUp(() => {
@@ -98,27 +109,30 @@ export default function AvailabilityWidget(props: IProps) {
         if (!last) return;
 
         if (store.gesture === "drag:middle") {
-          console.log({ x: last.x, y: last.y });
-          setStore(store.day!, store.slotIdx!, "top", (p) => p + y - last!.y);
-
-          setStore(store.day!, store.slotIdx!, "start", last?.time!);
-          setStore(store.day!, store.slotIdx!, "end", last?.time!);
+          // console.log({ x: last.x, y: last.y });
+          setStore(store.day!, store.slotIdx!, (slot) => ({
+            top: slot.top + y - last!.y,
+            start: yTime(slot.top + y - last!.y),
+            end: yTime(slot.height + slot.top + y - last!.y),
+          }));
         }
 
         if (store.gesture === "drag:top") {
-          batch(() => {
-            setStore(store.day!, store.slotIdx!, "height", (h) => h + (last!.y - y));
-            setStore(store.day!, store.slotIdx!, "top", (p) => p + y - last!.y);
-          });
+          setStore(store.day!, store.slotIdx!, (slot) => ({
+            top: slot.top + y - last!.y,
+            height: slot.height + (last!.y - y),
+            start: yTime(slot.top + y - last!.y),
+          }));
         }
 
         if (store.gesture === "drag:bottom") {
-          batch(() => {
-            setStore(store.day!, store.slotIdx!, "height", (h) => h + (y - last!.y));
-          });
+          setStore(store.day!, store.slotIdx!, (slot) => ({
+            height: slot.height + (y - last!.y),
+            end: yTime(slot.top + slot.height + (y - last!.y)),
+          }));
         }
 
-        last = { x, y, time: yTime(y) };
+        last = { x, y };
       });
     },
   });
@@ -145,7 +159,7 @@ export default function AvailabilityWidget(props: IProps) {
           }}
         >
           <div class="inline-flex" style={{ width: `${props.colWidth / 2}px` }}></div>
-          <For each={props.dayCols}>
+          <For each={DAY_COLS()}>
             {(col) => (
               <div
                 class="border-l-[1px] inline-flex justify-center items-center whitespace-normal overflow-clip"
@@ -197,7 +211,7 @@ export default function AvailabilityWidget(props: IProps) {
             }}
           >
             {/* ********* DAY COLS ********** */}
-            <For each={props.dayCols}>
+            <For each={DAY_COLS()}>
               {(day, colIdx) => {
                 let columnRef!: HTMLDivElement;
 
@@ -224,6 +238,7 @@ export default function AvailabilityWidget(props: IProps) {
                     }}
                   >
                     {/* ********* TIME SLOTS ************ */}
+
                     <For each={store[day]}>
                       {(slot, idx) => {
                         let slotRef!: HTMLDivElement;
@@ -277,6 +292,7 @@ export default function AvailabilityWidget(props: IProps) {
                         const height = createMemo(() => `${slot.height}px`);
                         const top = createMemo(() => `${slot.top}px`);
                         return (
+                          /* ********* TIME SLOT ************ */
                           <div
                             id={slot.id}
                             ref={slotRef}
@@ -295,14 +311,17 @@ export default function AvailabilityWidget(props: IProps) {
                             ></div>
                             <div
                               ref={middleRef}
-                              class="w-full h-[100%] flex flex-col justify-center items-center overflow-clip"
+                              class="w-full h-[100%] flex flex-col justify-center items-center overflow-clip text-xs"
                               style={{
                                 "touch-action": "none",
                                 "user-select": "none",
                                 height: height(),
                               }}
                             >
-                              <p>{slot.id}</p>
+                              {/* <p>{slot.id}</p> */}
+                              <p>
+                                {readable(slot.start)} - {readable(slot.end)}
+                              </p>
                               <p>{store.slotId === slot.id ? store.gesture : "idle"}</p>
                             </div>
                             <div
@@ -321,7 +340,7 @@ export default function AvailabilityWidget(props: IProps) {
                     <For each={HOURS()}>
                       {(hour, hourIdx) => (
                         <div
-                          class="absolute h-[1px] pointer-events-none"
+                          class="absolute h-[1px] pointer-events-none z-[-1]"
                           style={{
                             top: `${(props.colHeight / HOURS().length) * hourIdx()}px`,
                             width: `${props.colWidth}px`,
