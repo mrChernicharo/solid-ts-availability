@@ -18,6 +18,8 @@ export type IStore = {
 
 type ITimeSlot = {
   id: string;
-  y: number;
+  top: number;
   height: number;
+  start: number;
+  end: number;
 };

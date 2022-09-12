@@ -3,7 +3,7 @@ import { batch, Component, createEffect, createMemo, createSignal, For, Show } f
 import { createStore } from "solid-js/store";
 import { SCROLL_BAR, THEME } from "./lib/constants";
 import { IWeekday, IPalette, IStore } from "./lib/types";
-import { getLocaleHours } from "./lib/utils";
+import { getLocaleHours, yPosToTime } from "./lib/utils";
 // @ts-ignore
 import idMaker from "@melodev/id-maker";
 
@@ -27,6 +27,7 @@ export default function AvailabilityWidget(props: IProps) {
   let widgetRef!: HTMLDivElement;
   let containerRef!: HTMLDivElement;
   const HOURS = createMemo(() => getLocaleHours(props.minHour, props.maxHour, props.locale));
+  const yTime = (y: number) => yPosToTime(y, props.minHour, props.maxHour, props.colHeight);
 
   const [widgetWidth, setWidgetWidth] = createSignal(0);
   const [widgetTop, setWidgetTop] = createSignal(0);
@@ -38,13 +39,21 @@ export default function AvailabilityWidget(props: IProps) {
     gesture: "idle",
     Sun: [],
     Mon: [
-      { id: idMaker(), height: 50, y: 100 },
-      { id: idMaker(), height: 50, y: 300 },
+      {
+        id: idMaker(),
+        start: props.minHour * 60,
+        end: props.minHour * 60 + 60,
+        height: props.colHeight / (props.maxHour - props.minHour),
+        top: 0,
+      },
+      // { id: idMaker(), height: 50, y: 300 },
     ],
     Tue: [],
     Wed: [],
     Thu: [],
-    Fri: [{ id: idMaker(), height: 50, y: 100 }],
+    Fri: [
+      // { id: idMaker(), height: 50, y: 100 }
+    ],
     Sat: [],
   });
 
@@ -72,9 +81,9 @@ export default function AvailabilityWidget(props: IProps) {
   createPerPointerListeners({
     target: () => document.body,
     onEnter(e, { onDown, onMove, onUp, onLeave }) {
-      let last: { x: number; y: number } | null;
+      let last: { x: number; y: number; time: number } | null;
       onDown(({ x, y }) => {
-        last = { x, y };
+        last = { x, y, time: yTime(y) };
         // last = { x: offsetX, y: y - widgetTop() - props.headerHeight };
       });
       onUp(() => {
@@ -87,16 +96,19 @@ export default function AvailabilityWidget(props: IProps) {
       });
       onMove(({ x, y }) => {
         if (!last) return;
-        console.log({ x: last.x, y: last.y });
 
         if (store.gesture === "drag:middle") {
-          setStore(store.day!, store.slotIdx!, "y", (p) => p + y - last!.y);
+          console.log({ x: last.x, y: last.y });
+          setStore(store.day!, store.slotIdx!, "top", (p) => p + y - last!.y);
+
+          setStore(store.day!, store.slotIdx!, "start", last?.time!);
+          setStore(store.day!, store.slotIdx!, "end", last?.time!);
         }
 
         if (store.gesture === "drag:top") {
           batch(() => {
             setStore(store.day!, store.slotIdx!, "height", (h) => h + (last!.y - y));
-            setStore(store.day!, store.slotIdx!, "y", (p) => p + y - last!.y);
+            setStore(store.day!, store.slotIdx!, "top", (p) => p + y - last!.y);
           });
         }
 
@@ -106,7 +118,7 @@ export default function AvailabilityWidget(props: IProps) {
           });
         }
 
-        last = { x, y };
+        last = { x, y, time: yTime(y) };
       });
     },
   });
@@ -263,7 +275,7 @@ export default function AvailabilityWidget(props: IProps) {
                         });
 
                         const height = createMemo(() => `${slot.height}px`);
-                        const top = createMemo(() => `${slot.y}px`);
+                        const top = createMemo(() => `${slot.top}px`);
                         return (
                           <div
                             id={slot.id}
@@ -271,18 +283,19 @@ export default function AvailabilityWidget(props: IProps) {
                             class="w-full absolute bg-blue-600"
                             style={{
                               top: top(),
+                              // height: height(),
                             }}
                           >
                             <div
                               ref={topRef}
-                              class="w-full h-6  bg-slate-500"
+                              class="absolute top-0 w-full h-3 bg-slate-500"
                               style={{
                                 "touch-action": "none",
                               }}
                             ></div>
                             <div
                               ref={middleRef}
-                              class="w-full h-[100%] flex flex-col justify-center items-center "
+                              class="w-full h-[100%] flex flex-col justify-center items-center overflow-clip"
                               style={{
                                 "touch-action": "none",
                                 "user-select": "none",
@@ -294,7 +307,7 @@ export default function AvailabilityWidget(props: IProps) {
                             </div>
                             <div
                               ref={bottomRef}
-                              class="w-full h-6 bg-slate-500"
+                              class="absolute bottom-0 w-full h-3 bg-slate-500"
                               style={{
                                 "touch-action": "none",
                               }}
@@ -308,7 +321,7 @@ export default function AvailabilityWidget(props: IProps) {
                     <For each={HOURS()}>
                       {(hour, hourIdx) => (
                         <div
-                          class="absolute h-[1px]"
+                          class="absolute h-[1px] pointer-events-none"
                           style={{
                             top: `${(props.colHeight / HOURS().length) * hourIdx()}px`,
                             width: `${props.colWidth}px`,

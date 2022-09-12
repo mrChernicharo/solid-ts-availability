@@ -18,3 +18,23 @@ export const getLocaleHours = (minHour: number, maxHour: number, locale = "en") 
 
   return hours;
 };
+
+export function timeToYPos(minutes: number, minHour: number, maxHour: number, columnHeight: number) {
+  const [start, end] = [minHour * 60, maxHour * 60];
+
+  const percent = (minutes - start) / (end - start);
+  const res = columnHeight * percent;
+
+  return res;
+}
+
+export function yPosToTime(yPos: number, minHour: number, maxHour: number, columnHeight: number) {
+  const [start, end] = [minHour * 60, maxHour * 60];
+
+  const percent = yPos / columnHeight;
+
+  const timeClicked = (end - start) * percent + start;
+  // console.log({ yPos, minHour, percent, timeClicked });
+
+  return Math.round(timeClicked);
+}
