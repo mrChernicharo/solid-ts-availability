@@ -1,11 +1,9 @@
 import { createPerPointerListeners } from "@solid-primitives/pointer";
 import { batch, Component, createEffect, createMemo, createSignal, For, onMount, Show } from "solid-js";
 import { createStore } from "solid-js/store";
-import { DEFAULT_SLOT_DURATION, MIN_SLOT_DURATION, SCROLL_BAR, THEME } from "./lib/constants";
+import { DEFAULT_SLOT_DURATION, INITIAL_STORE, MIN_SLOT_DURATION, SCROLL_BAR, THEME } from "./lib/constants";
 import { IWeekday, IPalette, IStore } from "./lib/types";
-import { getLocaleHours, getWeekDays, readableTime, yPosToTime } from "./lib/utils";
-// @ts-ignore
-import idMaker from "@melodev/id-maker";
+import { getLocaleHours, getWeekDays, readableTime, timeToYPos, yPosToTime } from "./lib/utils";
 
 interface IProps {
   locale: string;
@@ -27,7 +25,9 @@ export default function AvailabilityWidget(props: IProps) {
   let widgetRef!: HTMLDivElement;
   let containerRef!: HTMLDivElement;
   const HOURS = createMemo(() => getLocaleHours(props.minHour, props.maxHour, props.locale));
-  const yTime = (y: number) => yPosToTime(y, props.minHour, props.maxHour, props.colHeight);
+  const yToTime = (y: number) => yPosToTime(y, props.minHour, props.maxHour, props.colHeight);
+  const timeToY = (time: number) => timeToYPos(time, props.minHour, props.maxHour, props.colHeight);
+
   const readable = (time: number) => readableTime(time, props.locale);
 
   const DAY_COLS = () =>
@@ -38,35 +38,7 @@ export default function AvailabilityWidget(props: IProps) {
   const [widgetWidth, setWidgetWidth] = createSignal(props.colWidth * (props.dayCols.length + 0.5));
   const [widgetTop, setWidgetTop] = createSignal(0);
 
-  const [store, setStore] = createStore<IStore>({
-    day: null,
-    slotId: null,
-    slotIdx: null,
-    gesture: "idle",
-    Sun: [],
-    Mon: [
-      {
-        id: idMaker(),
-        start: props.minHour * 60,
-        end: props.minHour * 60 + 60,
-        height: props.colHeight / (props.maxHour - props.minHour), // 1 hour
-        top: 0,
-      },
-    ],
-    Tue: [],
-    Wed: [
-      {
-        id: idMaker(),
-        start: props.minHour + 1 * 60,
-        end: props.minHour + 3 * 60,
-        height: (props.colHeight / (props.maxHour - props.minHour)) * 2, // 2 hours
-        top: props.colHeight / (props.maxHour - props.minHour),
-      },
-    ],
-    Thu: [],
-    Fri: [],
-    Sat: [],
-  });
+  const [store, setStore] = createStore<IStore>(INITIAL_STORE);
 
   createEffect(() => {
     const observer = new ResizeObserver((e) => {
@@ -113,9 +85,9 @@ export default function AvailabilityWidget(props: IProps) {
 
           setStore(store.day!, store.slotIdx!, (slot) => {
             const newSlot = {
-              top: slot.top + y - last!.y,
-              start: yTime(slot.top + y - last!.y),
-              end: yTime(slot.height + slot.top + y - last!.y),
+              top: timeToY(slot.start) + y - last!.y,
+              start: yToTime(timeToY(slot.start) + y - last!.y),
+              end: yToTime(timeToY(slot.end - slot.start) + timeToY(slot.start) + y - last!.y),
             };
 
             if (newSlot.top < 0 || newSlot.end > props.maxHour * 60) return slot;
@@ -127,9 +99,9 @@ export default function AvailabilityWidget(props: IProps) {
         if (store.gesture === "drag:top") {
           setStore(store.day!, store.slotIdx!, (slot) => {
             const newSlot = {
-              top: slot.top + y - last!.y,
-              height: slot.height + (last!.y - y),
-              start: yTime(slot.top + y - last!.y),
+              top: timeToY(slot.start) + y - last!.y,
+              height: timeToY(slot.end - slot.start) + (last!.y - y),
+              start: yToTime(timeToY(slot.start) + y - last!.y),
               end: slot.end,
             };
             const duration = newSlot.end - newSlot.start;
@@ -143,9 +115,9 @@ export default function AvailabilityWidget(props: IProps) {
         if (store.gesture === "drag:bottom") {
           setStore(store.day!, store.slotIdx!, (slot) => {
             const newSlot = {
-              height: slot.height + (y - last!.y),
+              height: timeToY(slot.end - slot.start) + (y - last!.y),
               start: slot.start,
-              end: yTime(slot.top + slot.height + (y - last!.y)),
+              end: yToTime(timeToY(slot.start) + timeToY(slot.end - slot.start) + (y - last!.y)),
             };
             const duration = newSlot.end - newSlot.start;
 
@@ -312,8 +284,8 @@ export default function AvailabilityWidget(props: IProps) {
                           },
                         });
 
-                        const height = createMemo(() => `${slot.height}px`);
-                        const top = createMemo(() => `${slot.top}px`);
+                        const height = createMemo(() => `${timeToY(slot.end - slot.start)}px`);
+                        const top = createMemo(() => `${timeToY(slot.start)}px`);
                         return (
                           /* ********* TIME SLOT ************ */
                           <div
@@ -327,7 +299,7 @@ export default function AvailabilityWidget(props: IProps) {
                           >
                             <div
                               ref={topRef}
-                              class="absolute top-0 w-full h-3 bg-slate-500"
+                              class="absolute top-0 w-full h-3 bg-blue-800 opacity-60"
                               style={{
                                 "touch-action": "none",
                               }}
@@ -349,7 +321,7 @@ export default function AvailabilityWidget(props: IProps) {
                             </div>
                             <div
                               ref={bottomRef}
-                              class="absolute bottom-0 w-full h-3 bg-slate-500"
+                              class="absolute bottom-0 w-full h-3 bg-blue-800 opacity-60"
                               style={{
                                 "touch-action": "none",
                               }}

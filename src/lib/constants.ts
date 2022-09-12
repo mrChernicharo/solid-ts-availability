@@ -1,4 +1,6 @@
-import { IWeekday } from "./types";
+import { IStore, IWeekday } from "./types";
+// @ts-ignore
+import idMaker from "@melodev/id-maker";
 
 export const THEME = {
   dark: {
@@ -23,6 +25,37 @@ export const THEME = {
     bg: "#fff",
     bg2: "#ccc",
   },
+};
+
+export const INITIAL_STORE: IStore = {
+  day: null,
+  slotId: null,
+  slotIdx: null,
+  gesture: "idle",
+  Sun: [],
+  Mon: [
+    {
+      id: idMaker(),
+      start: 0,
+      end: 60,
+    },
+  ],
+  Tue: [],
+  Wed: [
+    {
+      id: idMaker(),
+      start: 60,
+      end: 180,
+    },
+    {
+      id: idMaker(),
+      start: 240,
+      end: 300,
+    },
+  ],
+  Thu: [],
+  Fri: [],
+  Sat: [],
 };
 
 export const WEEKDAYS: IWeekday[] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
