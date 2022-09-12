@@ -3,6 +3,7 @@ export type IGesture = "idle" | "drag:middle" | "drag:top" | "drag:bottom";
 export type IPalette = "light" | "dark";
 export type ISnapOption = 30 | 20 | 15 | 10 | 5;
 export type IStore = {
+  day: IWeekday | null;
   slotId: string | null;
   slotIdx: number | null;
   gesture: "idle" | "drag:middle" | "drag:top" | "drag:bottom";

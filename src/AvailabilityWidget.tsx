@@ -24,11 +24,15 @@ interface IProps {
 }
 
 export default function AvailabilityWidget(props: IProps) {
+  let widgetRef!: HTMLDivElement;
   let containerRef!: HTMLDivElement;
   const HOURS = createMemo(() => getLocaleHours(props.minHour, props.maxHour, props.locale));
 
-  const [widgetWidth, setWidgetWidth] = createSignal("0px");
+  const [widgetWidth, setWidgetWidth] = createSignal(0);
+  const [widgetTop, setWidgetTop] = createSignal(0);
+
   const [store, setStore] = createStore<IStore>({
+    day: null,
     slotId: null,
     slotIdx: null,
     gesture: "idle",
@@ -46,7 +50,7 @@ export default function AvailabilityWidget(props: IProps) {
 
   createEffect(() => {
     const observer = new ResizeObserver((e) => {
-      const w = () => {
+      const width = () => {
         if (props.widgetHeight + SCROLL_BAR >= props.colHeight + props.headerHeight) {
           return props.colWidth * (props.dayCols.length + 0.5) + 2;
         } else {
@@ -54,18 +58,24 @@ export default function AvailabilityWidget(props: IProps) {
         }
       };
 
-      setWidgetWidth(Math.min(w(), window.innerWidth * 0.96) + "px");
+      setWidgetWidth(Math.min(width(), window.innerWidth * 0.96));
+      setWidgetTop(widgetRef.getBoundingClientRect().top);
     });
 
     observer.observe(document.body);
   });
 
+  createEffect(() => {
+    props.onChange(store);
+  });
+
   createPerPointerListeners({
-    target: () => containerRef,
+    target: () => document.body,
     onEnter(e, { onDown, onMove, onUp, onLeave }) {
       let last: { x: number; y: number } | null;
-      onDown(({ x, y, offsetY, offsetX }) => {
-        last = { x: offsetX, y: offsetY };
+      onDown(({ x, y }) => {
+        last = { x, y };
+        // last = { x: offsetX, y: y - widgetTop() - props.headerHeight };
       });
       onUp(() => {
         last = null;
@@ -75,38 +85,28 @@ export default function AvailabilityWidget(props: IProps) {
       onLeave(() => {
         last = null;
       });
-      onMove(({ x, y, offsetY, offsetX }) => {
+      onMove(({ x, y }) => {
         if (!last) return;
-        console.log({ e, y: last.y });
+        console.log({ x: last.x, y: last.y });
 
         if (store.gesture === "drag:middle") {
-          //   setStore("slots", store.slotIdx!, "pos", (p) => ({
-          //     x: p.x + x - last!.x,
-          //     y: p.y + y - last!.y,
-          //   }));
+          setStore(store.day!, store.slotIdx!, "y", (p) => p + y - last!.y);
         }
 
         if (store.gesture === "drag:top") {
-          //   batch(() => {
-          //     setStore("slots", store.slotIdx!, "height", (h) => h + (last!.y - y));
-          //     setStore("slots", store.slotIdx!, "pos", (p) => ({
-          //       x: p.x,
-          //       y: p.y + y - last!.y,
-          //     }));
-          //   });
+          batch(() => {
+            setStore(store.day!, store.slotIdx!, "height", (h) => h + (last!.y - y));
+            setStore(store.day!, store.slotIdx!, "y", (p) => p + y - last!.y);
+          });
         }
 
         if (store.gesture === "drag:bottom") {
-          //   batch(() => {
-          //     setStore("slots", store.slotIdx!, "height", (h) => h + (y - last!.y));
-          //     setStore("slots", store.slotIdx!, "pos", (p) => ({
-          //       x: p.x,
-          //       y: p.y,
-          //     }));
-          //   });
+          batch(() => {
+            setStore(store.day!, store.slotIdx!, "height", (h) => h + (y - last!.y));
+          });
         }
 
-        last = { x: offsetX, y: offsetY };
+        last = { x, y };
       });
     },
   });
@@ -114,10 +114,11 @@ export default function AvailabilityWidget(props: IProps) {
   return (
     <Show when={props.open}>
       <main
+        ref={widgetRef}
         class="mx-auto my-0 overflow-auto flex flex-col whitespace-nowrap"
         style={{
           height: `${props.widgetHeight + SCROLL_BAR + 2}px`,
-          width: widgetWidth(),
+          width: `${widgetWidth()}px`,
           background: `${THEME[props.palette].bg}`,
           color: `${THEME[props.palette].text}`,
         }}
@@ -185,124 +186,140 @@ export default function AvailabilityWidget(props: IProps) {
           >
             {/* ********* DAY COLS ********** */}
             <For each={props.dayCols}>
-              {(day, colIdx) => (
-                <div
-                  class="absolute inline-block z-[2] border-l-[1px]"
-                  style={{
-                    width: `${props.colWidth - 1}px`,
-                    height: `${props.colHeight}px`,
-                    left: `${props.colWidth * colIdx()}px`,
-                  }}
-                >
-                  {/* ********* TIME SLOTS ************ */}
+              {(day, colIdx) => {
+                let columnRef!: HTMLDivElement;
 
-                  <For each={store[day]}>
-                    {(slot, idx) => {
-                      let slotRef!: HTMLDivElement;
-                      let middleRef!: HTMLDivElement;
-                      let topRef!: HTMLDivElement;
-                      let bottomRef!: HTMLDivElement;
+                createPerPointerListeners({
+                  target: () => columnRef,
+                  onEnter(e, { onDown, onUp }) {
+                    onDown(({ x, y }) => {
+                      setStore("day", day);
+                    });
+                    onUp(() => {
+                      setStore("day", null);
+                    });
+                  },
+                });
 
-                      // SLOT LISTENER
-                      createPerPointerListeners({
-                        target: () => slotRef,
-                        onEnter(e, { onDown, onMove, onUp, onLeave }) {
-                          onDown(({ x, y }) => {
-                            batch(() => {
-                              setStore("slotId", slot.id);
-                              setStore("slotIdx", idx());
+                return (
+                  <div
+                    ref={columnRef}
+                    class="absolute inline-block z-[2] border-l-[1px]"
+                    style={{
+                      width: `${props.colWidth - 1}px`,
+                      height: `${props.colHeight}px`,
+                      left: `${props.colWidth * colIdx()}px`,
+                    }}
+                  >
+                    {/* ********* TIME SLOTS ************ */}
+                    <For each={store[day]}>
+                      {(slot, idx) => {
+                        let slotRef!: HTMLDivElement;
+                        let middleRef!: HTMLDivElement;
+                        let topRef!: HTMLDivElement;
+                        let bottomRef!: HTMLDivElement;
+
+                        // SLOT LISTENER
+                        createPerPointerListeners({
+                          target: () => slotRef,
+                          onEnter(e, { onDown, onMove, onUp, onLeave }) {
+                            onDown(({ x, y }) => {
+                              batch(() => {
+                                setStore("slotId", slot.id);
+                                setStore("slotIdx", idx());
+                              });
                             });
-                          });
-                        },
-                      });
+                          },
+                        });
 
-                      // MIDDLE LISTENER
-                      createPerPointerListeners({
-                        target: () => middleRef,
-                        onEnter(e, { onDown, onMove, onUp, onLeave }) {
-                          onDown(({ x, y }) => {
-                            setStore("gesture", "drag:middle");
-                          });
-                        },
-                      });
+                        // MIDDLE LISTENER
+                        createPerPointerListeners({
+                          target: () => middleRef,
+                          onEnter(e, { onDown, onMove, onUp, onLeave }) {
+                            onDown(({ x, y }) => {
+                              setStore("gesture", "drag:middle");
+                            });
+                          },
+                        });
 
-                      // TOP LISTENER
-                      createPerPointerListeners({
-                        target: () => topRef,
-                        onEnter(e, { onDown, onMove, onUp, onLeave }) {
-                          onDown(({ x, y }) => {
-                            setStore("gesture", "drag:top");
-                          });
-                        },
-                      });
+                        // TOP LISTENER
+                        createPerPointerListeners({
+                          target: () => topRef,
+                          onEnter(e, { onDown, onMove, onUp, onLeave }) {
+                            onDown(({ x, y }) => {
+                              setStore("gesture", "drag:top");
+                            });
+                          },
+                        });
 
-                      // BOTTOM LISTENER
-                      createPerPointerListeners({
-                        target: () => bottomRef,
-                        onEnter(e, { onDown, onMove, onUp, onLeave }) {
-                          onDown(({ x, y }) => {
-                            setStore("gesture", "drag:bottom");
-                          });
-                        },
-                      });
+                        // BOTTOM LISTENER
+                        createPerPointerListeners({
+                          target: () => bottomRef,
+                          onEnter(e, { onDown, onMove, onUp, onLeave }) {
+                            onDown(({ x, y }) => {
+                              setStore("gesture", "drag:bottom");
+                            });
+                          },
+                        });
 
-                      const height = createMemo(() => `${slot.height}px`);
-                      const top = createMemo(() => `${slot.y}px`);
-                      return (
-                        <div
-                          id={slot.id}
-                          ref={slotRef}
-                          class="w-full absolute bg-blue-600"
-                          style={{
-                            top: top(),
-                          }}
-                        >
+                        const height = createMemo(() => `${slot.height}px`);
+                        const top = createMemo(() => `${slot.y}px`);
+                        return (
                           <div
-                            ref={topRef}
-                            class="w-full h-6  bg-slate-500"
+                            id={slot.id}
+                            ref={slotRef}
+                            class="w-full absolute bg-blue-600"
                             style={{
-                              "touch-action": "none",
-                            }}
-                          ></div>
-                          <div
-                            ref={middleRef}
-                            class="w-full h-[100%] flex flex-col justify-center items-center "
-                            style={{
-                              "touch-action": "none",
-                              "user-select": "none",
-                              height: height(),
+                              top: top(),
                             }}
                           >
-                            <p>{slot.id}</p>
-                            <p>{store.slotId === slot.id ? store.gesture : "idle"}</p>
+                            <div
+                              ref={topRef}
+                              class="w-full h-6  bg-slate-500"
+                              style={{
+                                "touch-action": "none",
+                              }}
+                            ></div>
+                            <div
+                              ref={middleRef}
+                              class="w-full h-[100%] flex flex-col justify-center items-center "
+                              style={{
+                                "touch-action": "none",
+                                "user-select": "none",
+                                height: height(),
+                              }}
+                            >
+                              <p>{slot.id}</p>
+                              <p>{store.slotId === slot.id ? store.gesture : "idle"}</p>
+                            </div>
+                            <div
+                              ref={bottomRef}
+                              class="w-full h-6 bg-slate-500"
+                              style={{
+                                "touch-action": "none",
+                              }}
+                            ></div>
                           </div>
-                          <div
-                            ref={bottomRef}
-                            class="w-full h-6 bg-slate-500"
-                            style={{
-                              "touch-action": "none",
-                            }}
-                          ></div>
-                        </div>
-                      );
-                    }}
-                  </For>
+                        );
+                      }}
+                    </For>
 
-                  {/* ********* HOUR LINES ********** */}
-                  <For each={HOURS()}>
-                    {(hour, hourIdx) => (
-                      <div
-                        class="absolute h-[1px]"
-                        style={{
-                          top: `${(props.colHeight / HOURS().length) * hourIdx()}px`,
-                          width: `${props.colWidth}px`,
-                          background: `${THEME[props.palette].lightText}`,
-                        }}
-                      ></div>
-                    )}
-                  </For>
-                </div>
-              )}
+                    {/* ********* HOUR LINES ********** */}
+                    <For each={HOURS()}>
+                      {(hour, hourIdx) => (
+                        <div
+                          class="absolute h-[1px]"
+                          style={{
+                            top: `${(props.colHeight / HOURS().length) * hourIdx()}px`,
+                            width: `${props.colWidth}px`,
+                            background: `${THEME[props.palette].lightText}`,
+                          }}
+                        ></div>
+                      )}
+                    </For>
+                  </div>
+                );
+              }}
             </For>
           </div>
         </div>
