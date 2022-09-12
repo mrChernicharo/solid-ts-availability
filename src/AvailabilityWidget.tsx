@@ -3,7 +3,7 @@ import { batch, Component, createEffect, createMemo, createSignal, For, onMount,
 import { createStore } from "solid-js/store";
 import { DEFAULT_SLOT_DURATION, INITIAL_STORE, MIN_SLOT_DURATION, SCROLL_BAR, THEME } from "./lib/constants";
 import { IWeekday, IPalette, IStore } from "./lib/types";
-import { getLocaleHours, getWeekDays, readableTime, timeToYPos, yPosToTime } from "./lib/utils";
+import { getLocaleHours, getWeekDays, readableTime, snapTime, timeToYPos, yPosToTime } from "./lib/utils";
 
 interface IProps {
   locale: string;
@@ -66,13 +66,21 @@ export default function AvailabilityWidget(props: IProps) {
     target: () => document.body,
     onEnter(e, { onDown, onMove, onUp, onLeave }) {
       let last: { x: number; y: number } | null;
+
       onDown(({ x, y }) => {
         last = { x, y };
       });
       onUp(() => {
         last = null;
+        // console.log("dropped", store.slotId, store.day);
         setStore("gesture", "idle");
-        console.log("dropped", store.slotId);
+
+        if (!store.slotId || !store.day) return;
+
+        setStore(store.day!, store.slotIdx!, (slot) => ({
+          start: snapTime(slot.start, props.snapTo),
+          end: snapTime(slot.end, props.snapTo),
+        }));
       });
       onLeave(() => {
         last = null;
@@ -106,7 +114,7 @@ export default function AvailabilityWidget(props: IProps) {
             };
             const duration = newSlot.end - newSlot.start;
 
-            if (newSlot.start < 0 || duration < MIN_SLOT_DURATION) return slot;
+            if (newSlot.start < 0 || duration < Math.max(MIN_SLOT_DURATION, props.snapTo)) return slot;
 
             return newSlot;
           });
@@ -121,7 +129,7 @@ export default function AvailabilityWidget(props: IProps) {
             };
             const duration = newSlot.end - newSlot.start;
 
-            if (newSlot.end > props.maxHour * 60 || duration < MIN_SLOT_DURATION) return slot;
+            if (newSlot.end > props.maxHour * 60 || duration < Math.max(MIN_SLOT_DURATION, props.snapTo)) return slot;
 
             return newSlot;
           });
@@ -155,12 +163,12 @@ export default function AvailabilityWidget(props: IProps) {
         >
           <div class="inline-flex" style={{ width: `${props.colWidth / 2}px` }}></div>
           <For each={DAY_COLS()}>
-            {(col) => (
+            {(day) => (
               <div
                 class="border-l-[1px] inline-flex justify-center items-center whitespace-normal overflow-clip"
                 style={{ height: `${props.headerHeight}px`, width: `${props.colWidth}px` }}
               >
-                {col}
+                {day}
               </div>
             )}
           </For>
@@ -217,7 +225,7 @@ export default function AvailabilityWidget(props: IProps) {
                       setStore("day", day);
                     });
                     onUp(() => {
-                      setStore("day", null);
+                      // setTimeout(() => setStore("day", null), 100);
                     });
                   },
                 });
