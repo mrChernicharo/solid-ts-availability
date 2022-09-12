@@ -1,7 +1,7 @@
 import { createPerPointerListeners } from "@solid-primitives/pointer";
-import { batch, Component, createEffect, createMemo, createSignal, For, Show } from "solid-js";
+import { batch, Component, createEffect, createMemo, createSignal, For, onMount, Show } from "solid-js";
 import { createStore } from "solid-js/store";
-import { SCROLL_BAR, THEME } from "./lib/constants";
+import { DEFAULT_SLOT_DURATION, MIN_SLOT_DURATION, SCROLL_BAR, THEME } from "./lib/constants";
 import { IWeekday, IPalette, IStore } from "./lib/types";
 import { getLocaleHours, getWeekDays, readableTime, yPosToTime } from "./lib/utils";
 // @ts-ignore
@@ -35,7 +35,7 @@ export default function AvailabilityWidget(props: IProps) {
       firstDay: props.firstDay,
     }) as IWeekday[];
 
-  const [widgetWidth, setWidgetWidth] = createSignal(0);
+  const [widgetWidth, setWidgetWidth] = createSignal(props.colWidth * (props.dayCols.length + 0.5));
   const [widgetTop, setWidgetTop] = createSignal(0);
 
   const [store, setStore] = createStore<IStore>({
@@ -70,6 +70,7 @@ export default function AvailabilityWidget(props: IProps) {
 
   createEffect(() => {
     const observer = new ResizeObserver((e) => {
+      console.log(e);
       const width = () => {
         if (props.widgetHeight + SCROLL_BAR >= props.colHeight + props.headerHeight) {
           return props.colWidth * (props.dayCols.length + 0.5) + 2;
@@ -95,7 +96,6 @@ export default function AvailabilityWidget(props: IProps) {
       let last: { x: number; y: number } | null;
       onDown(({ x, y }) => {
         last = { x, y };
-        // last = { x: offsetX, y: y - widgetTop() - props.headerHeight };
       });
       onUp(() => {
         last = null;
@@ -110,26 +110,49 @@ export default function AvailabilityWidget(props: IProps) {
 
         if (store.gesture === "drag:middle") {
           // console.log({ x: last.x, y: last.y });
-          setStore(store.day!, store.slotIdx!, (slot) => ({
-            top: slot.top + y - last!.y,
-            start: yTime(slot.top + y - last!.y),
-            end: yTime(slot.height + slot.top + y - last!.y),
-          }));
+
+          setStore(store.day!, store.slotIdx!, (slot) => {
+            const newSlot = {
+              top: slot.top + y - last!.y,
+              start: yTime(slot.top + y - last!.y),
+              end: yTime(slot.height + slot.top + y - last!.y),
+            };
+
+            if (newSlot.top < 0 || newSlot.end > props.maxHour * 60) return slot;
+
+            return newSlot;
+          });
         }
 
         if (store.gesture === "drag:top") {
-          setStore(store.day!, store.slotIdx!, (slot) => ({
-            top: slot.top + y - last!.y,
-            height: slot.height + (last!.y - y),
-            start: yTime(slot.top + y - last!.y),
-          }));
+          setStore(store.day!, store.slotIdx!, (slot) => {
+            const newSlot = {
+              top: slot.top + y - last!.y,
+              height: slot.height + (last!.y - y),
+              start: yTime(slot.top + y - last!.y),
+              end: slot.end,
+            };
+            const duration = newSlot.end - newSlot.start;
+
+            if (newSlot.start < 0 || duration < MIN_SLOT_DURATION) return slot;
+
+            return newSlot;
+          });
         }
 
         if (store.gesture === "drag:bottom") {
-          setStore(store.day!, store.slotIdx!, (slot) => ({
-            height: slot.height + (y - last!.y),
-            end: yTime(slot.top + slot.height + (y - last!.y)),
-          }));
+          setStore(store.day!, store.slotIdx!, (slot) => {
+            const newSlot = {
+              height: slot.height + (y - last!.y),
+              start: slot.start,
+              end: yTime(slot.top + slot.height + (y - last!.y)),
+            };
+            const duration = newSlot.end - newSlot.start;
+
+            if (newSlot.end > props.maxHour * 60 || duration < MIN_SLOT_DURATION) return slot;
+
+            return newSlot;
+          });
         }
 
         last = { x, y };
