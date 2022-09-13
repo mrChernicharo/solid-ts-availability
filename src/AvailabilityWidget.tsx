@@ -99,7 +99,6 @@ export default function AvailabilityWidget(props: IProps) {
 
   createEffect(() => {
     const observer = new ResizeObserver((e) => {
-      // console.log(e);
       const width = () => {
         if (props.widgetHeight + SCROLL_BAR >= props.colHeight + props.headerHeight) {
           return props.colWidth * (props.dayCols.length + 0.5) + 2;
@@ -107,8 +106,9 @@ export default function AvailabilityWidget(props: IProps) {
           return props.colWidth * (props.dayCols.length + 0.5) + SCROLL_BAR + 2;
         }
       };
+      console.log(e, width(), window.screen.width);
 
-      setWidgetWidth(Math.min(width(), window.innerWidth * 0.96));
+      setWidgetWidth(Math.min(width(), window.screen.width * 0.96));
       setWidgetTop(widgetRef.getBoundingClientRect().top);
       setWidgetLeft(widgetRef.getBoundingClientRect().left);
     });
@@ -117,7 +117,7 @@ export default function AvailabilityWidget(props: IProps) {
   });
 
   createEffect(() => {
-    console.log({ l: widgetLeft(), t: widgetTop() });
+    console.log({ widgetWidth: widgetWidth(), widgetLeft: widgetLeft(), widgetTop: widgetTop() });
   });
 
   createEffect(() => {
@@ -131,8 +131,8 @@ export default function AvailabilityWidget(props: IProps) {
 
       setStore("lastClickPos", { x, y });
       setStore("lastContainerPos", {
-        x: x - widgetLeft() - props.colWidth / 2,
-        y: y - widgetTop() - props.headerHeight,
+        x: x - widgetLeft() - props.colWidth / 2 + widgetRef.scrollLeft,
+        y: y - widgetTop() - props.headerHeight + widgetRef.scrollTop,
       });
 
       // console.log("clicked", store.day, { timeDiff });
@@ -457,10 +457,7 @@ export default function AvailabilityWidget(props: IProps) {
                   <p>Create</p>
                   <button
                     onClick={(e) => {
-                      const newSlot = createNewTimeSlot(
-                        store.day!,
-                        yToTime(store.lastContainerPos.y + widgetRef.scrollTop)
-                      );
+                      const newSlot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
                       setStore(store.day!, (slots) => [...slots, newSlot]);
                       setStore("modal", "create", false);
                     }}
@@ -477,10 +474,7 @@ export default function AvailabilityWidget(props: IProps) {
                   <p>Merge</p>
                   <button
                     onClick={(e) => {
-                      const slot = createNewTimeSlot(
-                        store.day!,
-                        yToTime(store.lastContainerPos.y + widgetRef.scrollTop)
-                      );
+                      const slot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
                       const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
 
                       setStore(store.day!, mergedSlots);
@@ -492,10 +486,7 @@ export default function AvailabilityWidget(props: IProps) {
                   </button>
                   <button
                     onClick={(e) => {
-                      const newSlot = createNewTimeSlot(
-                        store.day!,
-                        yToTime(store.lastContainerPos.y + widgetRef.scrollTop)
-                      );
+                      const newSlot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
                       setStore(store.day!, (slots) => [...slots, newSlot]);
                       setStore("modal", "merge", false);
                     }}
@@ -511,10 +502,7 @@ export default function AvailabilityWidget(props: IProps) {
                   <p>Drop</p>
                   <button
                     onClick={(e) => {
-                      const slot = createNewTimeSlot(
-                        store.day!,
-                        yToTime(store.lastContainerPos.y + widgetRef.scrollTop)
-                      );
+                      const slot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
                       const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
 
                       setStore(store.day!, mergedSlots);

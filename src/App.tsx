@@ -8,7 +8,7 @@ const App: Component = () => {
 
   const [palette, setPalette] = createSignal<IPalette>("dark");
   const [colHeight, setColHeight] = createSignal(900);
-  const [colWidth, setColWidth] = createSignal(120);
+  const [colWidth, setColWidth] = createSignal(140);
   const [widgetHeight, setWidgetHeight] = createSignal(650);
   const [headerHeight, setHeaderHeight] = createSignal(50);
   const [firstDay, setFirstDay] = createSignal<IWeekday>("Mon");
@@ -21,11 +21,43 @@ const App: Component = () => {
   const [value, setValue] = createSignal({});
 
   const inputStyle = createMemo(() => ({ color: THEME[palette()].text2, background: THEME[palette()].bg2 }));
+  const simplifiedVal = (omitProps: string[]) => {
+    const val = { ...value() };
+    for (let prop of omitProps) {
+      // @ts-ignore
+      if (prop in val) delete val[prop];
+    }
+    return val;
+  };
 
   return (
     <div>
-      <section class="controls" style={{ "text-align": "center" }}>
-        <h1 class="text-4xl">Availability Widget</h1>
+      <h1 class="text-center text-4xl">Availability Widget</h1>
+
+      <AvailabilityWidget
+        locale={locale()}
+        dayCols={cols()} // omit days if you want, order doesn't matter, repeated items don't matter
+        firstDay={firstDay()} // first dayColumn
+        palette={palette()} // light | dark
+        open={isOpen()}
+        minHour={minHour()}
+        maxHour={endHour()}
+        widgetHeight={widgetHeight()}
+        headerHeight={headerHeight()}
+        colHeight={colHeight()}
+        colWidth={colWidth()}
+        snapTo={snap()}
+        onChange={(val: any) => setValue(val)}
+      />
+
+      <hr />
+
+      <pre class="text-xs">
+        {JSON.stringify(simplifiedVal(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]), null, 2)}
+      </pre>
+      {/* <pre class="text-xs">{JSON.stringify(value(), null, 2)}</pre> */}
+
+      {/* <section class="controls" style={{ "text-align": "center" }}>
         <div>
           <div>
             <button
@@ -160,27 +192,7 @@ const App: Component = () => {
             onChange={(e) => setColWidth(+e.currentTarget.value)}
           />
         </div>
-      </section>
-
-      <AvailabilityWidget
-        locale={locale()}
-        dayCols={cols()} // omit days if you want, order doesn't matter, repeated items don't matter
-        firstDay={firstDay()} // first dayColumn
-        palette={palette()} // light | dark
-        open={isOpen()}
-        minHour={minHour()}
-        maxHour={endHour()}
-        widgetHeight={widgetHeight()}
-        headerHeight={headerHeight()}
-        colHeight={colHeight()}
-        colWidth={colWidth()}
-        snapTo={snap()}
-        onChange={(val: any) => setValue(val)}
-      />
-
-      <hr />
-
-      <pre>{JSON.stringify(value(), null, 2)}</pre>
+      </section> */}
     </div>
   );
 };
