@@ -48,6 +48,7 @@ export default function AvailabilityWidget(props: IProps) {
   const timeToY = (time: number) => timeToYPos(time, props.minHour, props.maxHour, props.colHeight);
 
   const readable = (time: number) => readableTime(time, props.locale);
+  const slotIdx = (id: string) => store[store.day!].findIndex((s) => s.id === id);
   const getOverlappingSlots = (clickTime: number) => findOverlappingSlots(clickTime, clickTime, store[store.day!]);
   const getNearbySlots = (clickTime: number) =>
     findOverlappingSlots(clickTime - props.snapTo, clickTime + props.snapTo, store[store.day!]);
@@ -147,7 +148,7 @@ export default function AvailabilityWidget(props: IProps) {
 
         if (!store.slotId || !store.day || !store[store.day!].length) return;
 
-        setStore(store.day!, store.slotIdx!, (slot) => ({
+        setStore(store.day!, slotIdx(store.slotId), (slot) => ({
           start: snapTime(slot.start, props.snapTo),
           end: snapTime(slot.end, props.snapTo),
         }));
@@ -168,7 +169,7 @@ export default function AvailabilityWidget(props: IProps) {
         if (store.gesture === "drag:middle") {
           // console.log({ x: last.x, y: last.y });
 
-          setStore(store.day!, store.slotIdx!, (slot) => {
+          setStore(store.day!, slotIdx(store.slotId!), (slot) => {
             const newSlot = {
               top: timeToY(slot.start) + y - last!.y,
               start: yToTime(timeToY(slot.start) + y - last!.y),
@@ -182,7 +183,7 @@ export default function AvailabilityWidget(props: IProps) {
         }
 
         if (store.gesture === "drag:top") {
-          setStore(store.day!, store.slotIdx!, (slot) => {
+          setStore(store.day!, slotIdx(store.slotId!), (slot) => {
             const newSlot = {
               top: timeToY(slot.start) + y - last!.y,
               height: timeToY(slot.end - slot.start) + (last!.y - y),
@@ -198,7 +199,7 @@ export default function AvailabilityWidget(props: IProps) {
         }
 
         if (store.gesture === "drag:bottom") {
-          setStore(store.day!, store.slotIdx!, (slot) => {
+          setStore(store.day!, slotIdx(store.slotId!), (slot) => {
             const newSlot = {
               height: timeToY(slot.end - slot.start) + (y - last!.y),
               start: slot.start,
@@ -338,7 +339,6 @@ export default function AvailabilityWidget(props: IProps) {
                           onDown: ({ x, y }) => {
                             batch(() => {
                               setStore("slotId", slot.id);
-                              setStore("slotIdx", idx());
                             });
                           },
                         });
