@@ -11,7 +11,8 @@ import {
   THEME,
 } from "./lib/constants";
 import { IWeekday, IPalette, IStore, ITimeSlot } from "./lib/types";
-import { FiLayers, FiX } from "solid-icons/fi";
+import { FiCalendar, FiCheck, FiDelete, FiLayers, FiPlus, FiX } from "solid-icons/fi";
+import { FaSolidCalendarPlus } from "solid-icons/fa";
 import {
   findOverlappingSlots,
   getLocaleHours,
@@ -116,30 +117,28 @@ export default function AvailabilityWidget(props: IProps) {
     props.onChange(store);
   });
 
-  createPerPointerListeners({
+  createPointerListeners({
     target: () => containerRef,
-    onEnter(e, { onUp }) {
-      onUp(({ x, y }) => {
-        console.log("clicked", store.day);
-        if (store.gesture === "idle") setStore("modal", "create", true);
-        setStore("lastClickPos", { x, y });
-        setStore("lastContainerPos", {
-          x: x - widgetLeft() - props.colWidth / 2,
-          y: y - widgetTop() - props.headerHeight,
-        });
+    onUp: ({ x, y }) => {
+      console.log("clicked", store.day);
+      if (store.gesture === "idle") setStore("modal", "create", true);
+      setStore("lastClickPos", { x, y });
+      setStore("lastContainerPos", {
+        x: x - widgetLeft() - props.colWidth / 2,
+        y: y - widgetTop() - props.headerHeight,
       });
     },
   });
 
   createPerPointerListeners({
     target: () => document.body,
-    passive: false,
     onEnter(e, { onDown, onMove, onUp, onLeave, onCancel }) {
       let last: { x: number; y: number } | null;
       // console.log("entered");
 
       onDown(({ x, y }) => {
         last = { x, y };
+        console.log({ x, y });
       });
       onUp(({ x, y }) => {
         last = null;
@@ -345,7 +344,7 @@ export default function AvailabilityWidget(props: IProps) {
                         });
 
                         // MIDDLE LISTENER
-                        createPerPointerListeners({
+                        createPointerListeners({
                           target: () => middleRef,
                           onDown: (e) => setStore("gesture", "drag:middle"),
                         });
@@ -370,17 +369,15 @@ export default function AvailabilityWidget(props: IProps) {
                             id={slot.id}
                             ref={slotRef}
                             class="w-full absolute bg-blue-600"
-                            style={{
-                              top: top(),
-                              // height: height(),
+                            style={{ top: top() }}
+                            onClick={(e) => {
+                              if (!store.modal.merge && !store.modal.drop) setStore("modal", "details", true);
                             }}
                           >
                             <div
                               ref={topRef}
                               class="absolute top-0 w-full h-3 bg-blue-800 opacity-60"
-                              style={{
-                                "touch-action": "none",
-                              }}
+                              style={{ "touch-action": "none" }}
                             ></div>
                             <div
                               ref={middleRef}
@@ -391,7 +388,6 @@ export default function AvailabilityWidget(props: IProps) {
                                 height: height(),
                               }}
                             >
-                              {/* <p>{slot.id}</p> */}
                               <p>
                                 {readable(slot.start)} - {readable(slot.end)}
                               </p>
@@ -400,9 +396,7 @@ export default function AvailabilityWidget(props: IProps) {
                             <div
                               ref={bottomRef}
                               class="absolute bottom-0 w-full h-3 bg-blue-800 opacity-60"
-                              style={{
-                                "touch-action": "none",
-                              }}
+                              style={{ "touch-action": "none" }}
                             ></div>
                           </div>
                         );
@@ -439,33 +433,86 @@ export default function AvailabilityWidget(props: IProps) {
                   left: `${store.lastClickPos.x}px`,
                 }}
               >
-                <Switch>
-                  {() => {
-                    /* @ts-ignore */
-                    return (
-                      <Match when={store.modal.create}>
-                        <button>
-                          <FiX onClick={(e) => setStore("modal", "create", false)} />
-                        </button>
-                        <p>Create</p>
+                <section style={{ display: store.modal.create ? "block" : "none" }}>
+                  <button>
+                    <FiX onClick={(e) => setStore("modal", "create", false)} />
+                  </button>
+                  <p>Create</p>
+                  <button
+                    onClick={(e) => {
+                      const newSlot = createNewTimeSlot(
+                        store.day!,
+                        yToTime(store.lastContainerPos.y + widgetRef.scrollTop)
+                      );
+                      setStore(store.day!, (slots) => [...slots, newSlot]);
+                      setStore("modal", "create", false);
+                    }}
+                  >
+                    <FaSolidCalendarPlus />
+                    {/* <FiPlus /> */}
+                  </button>
+                </section>
 
-                        <button
-                          onClick={(e) => {
-                            console.log(store.day);
-                            const newSlot = createNewTimeSlot(
-                              store.day!,
-                              yToTime(store.lastContainerPos.y + widgetRef.scrollTop)
-                            );
-                            setStore(store.day!, (slots) => [...slots, newSlot]);
-                            setStore("modal", "create", false);
-                          }}
-                        >
-                          <FiLayers />
-                        </button>
-                      </Match>
-                    );
-                  }}
-                </Switch>
+                <section style={{ display: store.modal.merge ? "block" : "none" }}>
+                  <button>
+                    <FiX onClick={(e) => setStore("modal", "merge", false)} />
+                  </button>
+                  <p>Merge</p>
+                  <button
+                    onClick={(e) => {
+                      console.log("merge that shit!");
+                      // const newSlot = createNewTimeSlot(
+                      //   store.day!,
+                      //   yToTime(store.lastContainerPos.y + widgetRef.scrollTop)
+                      // );
+                      // setStore(store.day!, (slots) => [...slots, newSlot]);
+                      setStore("modal", "merge", false);
+                    }}
+                  >
+                    <FiLayers />
+                  </button>
+                </section>
+
+                <section style={{ display: store.modal.drop ? "block" : "none" }}>
+                  <button>
+                    <FiX onClick={(e) => setStore("modal", "drop", false)} />
+                  </button>
+                  <p>Drop</p>
+                  <button
+                    onClick={(e) => {
+                      // const newSlot = createNewTimeSlot(
+                      //   store.day!,
+                      //   yToTime(store.lastContainerPos.y + widgetRef.scrollTop)
+                      // );
+                      // setStore(store.day!, (slots) => [...slots, newSlot]);
+                      setStore("modal", "drop", false);
+                    }}
+                  >
+                    <FaSolidCalendarPlus />
+                    {/* <FiPlus /> */}
+                  </button>
+                </section>
+
+                <section style={{ display: store.modal.details ? "block" : "none" }}>
+                  <button>
+                    <FiX onClick={(e) => setStore("modal", "details", false)} />
+                  </button>
+
+                  <p>Details</p>
+
+                  <button onClick={(e) => setStore("modal", "details", false)}>
+                    <FiCheck />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      setStore("modal", "details", false);
+                      setStore(store.day!, (slots) => slots.filter((s) => s.id !== store.slotId));
+                    }}
+                  >
+                    <FiDelete />
+                  </button>
+                </section>
+
                 {/* {Object.keys(store.modal).filter((k) => store.modal[k])} */}
               </div>
 

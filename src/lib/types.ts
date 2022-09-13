@@ -8,7 +8,7 @@ export type IStore = {
   slotIdx: number | null;
   lastClickPos: { x: number; y: number };
   lastContainerPos: { x: number; y: number };
-  gesture: "idle" | "drag:middle" | "drag:top" | "drag:bottom";
+  gesture: "idle" | "drag:ready" | "drag:middle" | "drag:top" | "drag:bottom";
   Sun: ITimeSlot[];
   Mon: ITimeSlot[];
   Tue: ITimeSlot[];
