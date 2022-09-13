@@ -4,10 +4,10 @@ import idMaker from "@melodev/id-maker";
 
 export const THEME = {
   dark: {
-    primary: "dodgerblue",
-    primary2: "lightblue",
-    accent: "hotpink",
-    accent2: "pink",
+    primary: "royalblue",
+    primary2: "dodgerblue",
+    accent: "fuchsia",
+    accent2: "hotpink",
     text: "#fff",
     text2: "#ccc",
     lightText: "#444",
@@ -15,10 +15,10 @@ export const THEME = {
     bg2: "#555",
   },
   light: {
-    primary: "dodgerblue",
-    primary2: "lightblue",
-    accent: "hotpink",
-    accent2: "pink",
+    primary: "royalblue",
+    primary2: "dodgerblue",
+    accent: "fuchsia",
+    accent2: "hotpink",
     text: "#222",
     text2: "#555",
     lightText: "#ddd",

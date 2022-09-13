@@ -8,7 +8,7 @@ const App: Component = () => {
 
   const [palette, setPalette] = createSignal<IPalette>("dark");
   const [colHeight, setColHeight] = createSignal(900);
-  const [colWidth, setColWidth] = createSignal(140);
+  const [colWidth, setColWidth] = createSignal(100);
   const [widgetHeight, setWidgetHeight] = createSignal(650);
   const [headerHeight, setHeaderHeight] = createSignal(50);
   const [firstDay, setFirstDay] = createSignal<IWeekday>("Mon");

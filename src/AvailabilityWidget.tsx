@@ -146,17 +146,18 @@ export default function AvailabilityWidget(props: IProps) {
     return newTimeSlot;
   };
 
+  const observer = new ResizeObserver(updateWidgetWidth);
+
   createEffect(() => {
     updateWidgetBounds();
     document.addEventListener("scroll", updateWidgetBounds);
-
-    const observer = new ResizeObserver(updateWidgetWidth);
     observer.observe(document.body);
   });
 
-  // onCleanup(() => {
-  //   document.removeEventListener("scroll", updateWidgetBounds);
-  // });
+  onCleanup(() => {
+    document.removeEventListener("scroll", updateWidgetBounds);
+    observer.unobserve(document.body);
+  });
 
   createEffect(() => {
     if (isModalOpen()) {
@@ -363,12 +364,12 @@ export default function AvailabilityWidget(props: IProps) {
             <For each={HOURS()}>
               {(hour) => (
                 <div
-                  class="text-sm border-b-[1px]"
+                  class="relative text-sm border-b-[1px] flex justify-center items-center whitespace-normal overflow-clip"
                   style={{
                     height: `${props.colHeight / HOURS().length}px`,
                   }}
                 >
-                  {hour}
+                  <div class="absolute top-0">{hour}</div>
                 </div>
               )}
             </For>
