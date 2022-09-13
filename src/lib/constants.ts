@@ -30,7 +30,7 @@ export const THEME = {
 export const INITIAL_STORE: IStore = {
   day: null,
   slotId: null,
-  lastClickPos: { x: 0, y: 0 },
+  lastWindowPos: { x: 0, y: 0 },
   lastContainerPos: { x: 0, y: 0 },
   gesture: "idle",
   Sun: [],

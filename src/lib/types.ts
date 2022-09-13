@@ -5,7 +5,7 @@ export type ISnapOption = 30 | 20 | 15 | 10 | 5;
 export type IStore = {
   day: IWeekday | null;
   slotId: string | null;
-  lastClickPos: { x: number; y: number };
+  lastWindowPos: { x: number; y: number };
   lastContainerPos: { x: number; y: number };
   gesture: "idle" | "drag:ready" | "drag:middle" | "drag:top" | "drag:bottom";
   Sun: ITimeSlot[];

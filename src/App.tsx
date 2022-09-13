@@ -34,30 +34,7 @@ const App: Component = () => {
     <div>
       <h1 class="text-center text-4xl">Availability Widget</h1>
 
-      <AvailabilityWidget
-        locale={locale()}
-        dayCols={cols()} // omit days if you want, order doesn't matter, repeated items don't matter
-        firstDay={firstDay()} // first dayColumn
-        palette={palette()} // light | dark
-        open={isOpen()}
-        minHour={minHour()}
-        maxHour={endHour()}
-        widgetHeight={widgetHeight()}
-        headerHeight={headerHeight()}
-        colHeight={colHeight()}
-        colWidth={colWidth()}
-        snapTo={snap()}
-        onChange={(val: any) => setValue(val)}
-      />
-
-      <hr />
-
-      <pre class="text-xs">
-        {JSON.stringify(simplifiedVal(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]), null, 2)}
-      </pre>
-      {/* <pre class="text-xs">{JSON.stringify(value(), null, 2)}</pre> */}
-
-      {/* <section class="controls" style={{ "text-align": "center" }}>
+      <section class="controls" style={{ "text-align": "center" }}>
         <div>
           <div>
             <button
@@ -192,7 +169,30 @@ const App: Component = () => {
             onChange={(e) => setColWidth(+e.currentTarget.value)}
           />
         </div>
-      </section> */}
+      </section>
+
+      <AvailabilityWidget
+        locale={locale()}
+        dayCols={cols()} // omit days if you want, order doesn't matter, repeated items don't matter
+        firstDay={firstDay()} // first dayColumn
+        palette={palette()} // light | dark
+        open={isOpen()}
+        minHour={minHour()}
+        maxHour={endHour()}
+        widgetHeight={widgetHeight()}
+        headerHeight={headerHeight()}
+        colHeight={colHeight()}
+        colWidth={colWidth()}
+        snapTo={snap()}
+        onChange={(val: any) => setValue(val)}
+      />
+
+      <hr />
+
+      <pre class="text-xs">
+        {JSON.stringify(simplifiedVal(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]), null, 2)}
+      </pre>
+      <pre class="text-xs">{JSON.stringify(value(), null, 2)}</pre>
     </div>
   );
 };

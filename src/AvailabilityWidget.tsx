@@ -1,5 +1,17 @@
 import { createPerPointerListeners, createPointerListeners } from "@solid-primitives/pointer";
-import { batch, Component, createEffect, createMemo, createSignal, For, Match, onMount, Show, Switch } from "solid-js";
+import {
+  batch,
+  Component,
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  Match,
+  onCleanup,
+  onMount,
+  Show,
+  Switch,
+} from "solid-js";
 import { createStore } from "solid-js/store";
 import { Portal } from "solid-js/web";
 import {
@@ -48,24 +60,38 @@ export default function AvailabilityWidget(props: IProps) {
   let timestamp = Date.now();
 
   const HOURS = createMemo(() => getLocaleHours(props.minHour, props.maxHour, props.locale));
-  const yToTime = (y: number) => yPosToTime(y, props.minHour, props.maxHour, props.colHeight);
-  const timeToY = (time: number) => timeToYPos(time, props.minHour, props.maxHour, props.colHeight);
-
-  const readable = (time: number) => readableTime(time, props.locale);
-  const slotIdx = (id: string) => store[store.day!].findIndex((s) => s.id === id);
-  const getSlot = (id: string) => store[store.day!].find((s) => s.id === id);
-
-  const getOverlappingSlots = (clickTime: number) => findOverlappingSlots(clickTime, clickTime, store[store.day!]);
-  const getNearbySlots = (clickTime: number) =>
-    findOverlappingSlots(clickTime - props.snapTo, clickTime + props.snapTo, store[store.day!]);
-
-  const isModalOpen = () =>
-    store.modal.create || store.modal.merge || store.modal.details || store.modal.confirm || store.modal.drop;
-
   const DAY_COLS = () =>
     getWeekDays(props.dayCols, {
       firstDay: props.firstDay,
     }) as IWeekday[];
+
+  const yToTime = (y: number) => yPosToTime(y, props.minHour, props.maxHour, props.colHeight);
+  const timeToY = (time: number) => timeToYPos(time, props.minHour, props.maxHour, props.colHeight);
+  const readable = (time: number) => readableTime(time, props.locale);
+
+  const slotIdx = (id: string) => store[store.day!].findIndex((s) => s.id === id);
+  const getSlot = (id: string) => store[store.day!].find((s) => s.id === id);
+
+  const getOverlappingSlots = (clickTime: number) => findOverlappingSlots(clickTime, clickTime, store[store.day!]);
+  const getNearbySlots = (clickTime: number) => {
+    return findOverlappingSlots(clickTime - props.snapTo, clickTime + props.snapTo, store[store.day!]);
+  };
+
+  const getScreenWidth = () => {
+    const widths = [window.innerWidth];
+
+    if (window.screen?.width) widths.push(window.screen?.width);
+
+    return Math.min(...widths);
+  };
+
+  const updateWidgetBounds = () => {
+    setWidgetTop(widgetRef.getBoundingClientRect().top + (document.scrollingElement?.scrollTop || 0));
+    setWidgetLeft(widgetRef.getBoundingClientRect().left);
+  };
+
+  const isModalOpen = () =>
+    store.modal.create || store.modal.merge || store.modal.details || store.modal.confirm || store.modal.drop;
 
   const createNewTimeSlot = (day: IWeekday, time: number) => {
     let [start, end] = [Math.round(time - DEFAULT_SLOT_DURATION / 2), Math.round(time + DEFAULT_SLOT_DURATION / 2)];
@@ -97,28 +123,34 @@ export default function AvailabilityWidget(props: IProps) {
 
   const [store, setStore] = createStore<IStore>(INITIAL_STORE);
 
+  onMount(() => {
+    updateWidgetBounds();
+    document.addEventListener("scroll", updateWidgetBounds);
+  });
+
+  onCleanup(() => {
+    document.removeEventListener("scroll", updateWidgetBounds);
+  });
+
   createEffect(() => {
     const observer = new ResizeObserver((e) => {
-      const width = () => {
+      const wWidth = () => {
         if (props.widgetHeight + SCROLL_BAR >= props.colHeight + props.headerHeight) {
           return props.colWidth * (props.dayCols.length + 0.5) + 2;
         } else {
           return props.colWidth * (props.dayCols.length + 0.5) + SCROLL_BAR + 2;
         }
       };
-      console.log(e, width(), window.screen.width);
 
-      setWidgetWidth(Math.min(width(), window.screen.width * 0.96));
-      setWidgetTop(widgetRef.getBoundingClientRect().top);
-      setWidgetLeft(widgetRef.getBoundingClientRect().left);
+      setWidgetWidth(Math.min(wWidth(), getScreenWidth() * 0.96));
     });
 
     observer.observe(document.body);
   });
 
-  createEffect(() => {
-    console.log({ widgetWidth: widgetWidth(), widgetLeft: widgetLeft(), widgetTop: widgetTop() });
-  });
+  // createEffect(() => {
+  //   console.log({ widgetWidth: widgetWidth(), widgetLeft: widgetLeft(), widgetTop: widgetTop() });
+  // });
 
   createEffect(() => {
     props.onChange(store);
@@ -129,10 +161,10 @@ export default function AvailabilityWidget(props: IProps) {
     onUp: ({ x, y }) => {
       timeDiff = Date.now() - timestamp;
 
-      setStore("lastClickPos", { x, y });
+      setStore("lastWindowPos", { x, y });
       setStore("lastContainerPos", {
         x: x - widgetLeft() - props.colWidth / 2 + widgetRef.scrollLeft,
-        y: y - widgetTop() - props.headerHeight + widgetRef.scrollTop,
+        y: y - widgetTop() + (document.scrollingElement?.scrollTop || 0) - props.headerHeight + widgetRef.scrollTop,
       });
 
       // console.log("clicked", store.day, { timeDiff });
@@ -441,116 +473,124 @@ export default function AvailabilityWidget(props: IProps) {
             {/* ************* MODAL *************** */}
 
             <Portal mount={document.getElementById("root")!}>
-              <div
-                class="absolute z-50 p-4 top-0 text-lg"
-                style={{
-                  background: `${THEME[props.palette].bg2}`,
-                  display: isModalOpen() ? "block" : "none",
-                  top: `${store.lastClickPos.y}px`,
-                  left: `${store.lastClickPos.x}px`,
-                }}
-              >
-                <section style={{ display: store.modal.create ? "block" : "none" }}>
-                  <button>
-                    <FiX onClick={(e) => setStore("modal", "create", false)} />
-                  </button>
-                  <p>Create</p>
-                  <button
-                    onClick={(e) => {
-                      const newSlot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
-                      setStore(store.day!, (slots) => [...slots, newSlot]);
-                      setStore("modal", "create", false);
-                    }}
-                  >
-                    <FaSolidCalendarPlus />
-                    {/* <FiPlus /> */}
-                  </button>
-                </section>
+              {() => {
+                const modalTop = createMemo(() => store.lastWindowPos.y + (document.scrollingElement?.scrollTop || 0));
 
-                <section style={{ display: store.modal.merge ? "block" : "none" }}>
-                  <button>
-                    <FiX onClick={(e) => setStore("modal", "merge", false)} />
-                  </button>
-                  <p>Merge</p>
-                  <button
-                    onClick={(e) => {
-                      const slot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
-                      const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
+                return (
+                  <>
+                    <div
+                      class="absolute z-50 p-4 top-0 text-lg"
+                      style={{
+                        background: `${THEME[props.palette].bg2}`,
+                        display: isModalOpen() ? "block" : "none",
+                        top: `${modalTop()}px`,
+                        left: `${store.lastWindowPos.x}px`,
+                      }}
+                    >
+                      <section style={{ display: store.modal.create ? "block" : "none" }}>
+                        <button>
+                          <FiX onClick={(e) => setStore("modal", "create", false)} />
+                        </button>
+                        <p>Create</p>
+                        <button
+                          onClick={(e) => {
+                            const newSlot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
+                            setStore(store.day!, (slots) => [...slots, newSlot]);
+                            setStore("modal", "create", false);
+                          }}
+                        >
+                          <FaSolidCalendarPlus />
+                          {/* <FiPlus /> */}
+                        </button>
+                      </section>
 
-                      setStore(store.day!, mergedSlots);
-                      setStore("slotId", newSlot.id);
-                      setStore("modal", "merge", false);
-                    }}
-                  >
-                    <FiLayers />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      const newSlot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
-                      setStore(store.day!, (slots) => [...slots, newSlot]);
-                      setStore("modal", "merge", false);
-                    }}
-                  >
-                    <FaSolidCalendarPlus />
-                  </button>
-                </section>
+                      <section style={{ display: store.modal.merge ? "block" : "none" }}>
+                        <button>
+                          <FiX onClick={(e) => setStore("modal", "merge", false)} />
+                        </button>
+                        <p>Merge</p>
+                        <button
+                          onClick={(e) => {
+                            const slot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
+                            const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
 
-                <section style={{ display: store.modal.drop ? "block" : "none" }}>
-                  <button>
-                    <FiX onClick={(e) => setStore("modal", "drop", false)} />
-                  </button>
-                  <p>Drop</p>
-                  <button
-                    onClick={(e) => {
-                      const slot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
-                      const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
+                            setStore(store.day!, mergedSlots);
+                            setStore("slotId", newSlot.id);
+                            setStore("modal", "merge", false);
+                          }}
+                        >
+                          <FiLayers />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            const newSlot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
+                            setStore(store.day!, (slots) => [...slots, newSlot]);
+                            setStore("modal", "merge", false);
+                          }}
+                        >
+                          <FaSolidCalendarPlus />
+                        </button>
+                      </section>
 
-                      setStore(store.day!, mergedSlots);
-                      setStore("slotId", newSlot.id);
-                      setStore("modal", "drop", false);
-                    }}
-                  >
-                    <FiLayers />
-                    {/* <FiPlus /> */}
-                  </button>
-                </section>
+                      <section style={{ display: store.modal.drop ? "block" : "none" }}>
+                        <button>
+                          <FiX onClick={(e) => setStore("modal", "drop", false)} />
+                        </button>
+                        <p>Drop</p>
+                        <button
+                          onClick={(e) => {
+                            const slot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
+                            const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
 
-                <section style={{ display: store.modal.details ? "block" : "none" }}>
-                  <button>
-                    <FiX onClick={(e) => setStore("modal", "details", false)} />
-                  </button>
+                            setStore(store.day!, mergedSlots);
+                            setStore("slotId", newSlot.id);
+                            setStore("modal", "drop", false);
+                          }}
+                        >
+                          <FiLayers />
+                          {/* <FiPlus /> */}
+                        </button>
+                      </section>
 
-                  <p>Details</p>
+                      <section style={{ display: store.modal.details ? "block" : "none" }}>
+                        <button>
+                          <FiX onClick={(e) => setStore("modal", "details", false)} />
+                        </button>
 
-                  <button onClick={(e) => setStore("modal", "details", false)}>
-                    <FiCheck />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      setStore("modal", "details", false);
-                      setStore(store.day!, (slots) => slots.filter((s) => s.id !== store.slotId));
-                    }}
-                  >
-                    <FiTrash />
-                  </button>
-                </section>
+                        <p>Details</p>
 
-                {/* {Object.keys(store.modal).filter((k) => store.modal[k])} */}
-              </div>
+                        <p class="text-xs">{store.slotId}</p>
 
-              {/* ************* OVERLAY *************** */}
+                        <button onClick={(e) => setStore("modal", "details", false)}>
+                          <FiCheck />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            setStore("modal", "details", false);
+                            setStore(store.day!, (slots) => slots.filter((s) => s.id !== store.slotId));
+                          }}
+                        >
+                          <FiTrash />
+                        </button>
+                      </section>
+                    </div>
 
-              <div
-                class="fixed z-30 w-[10000px] h-[10000px] opacity-10 bg-fuchsia-800"
-                style={{
-                  display: isModalOpen() ? "block" : "none",
-                }}
-                onClick={(e) => {
-                  batch(() => {
-                    MODAL_TYPES.forEach((type) => setStore("modal", type as any, false));
-                  });
-                }}
-              ></div>
+                    {/* ************* OVERLAY ***************  */}
+
+                    <div
+                      class="fixed z-30 w-[10000px] h-[10000px] opacity-10 bg-fuchsia-800"
+                      style={{
+                        display: isModalOpen() ? "block" : "none",
+                      }}
+                      onClick={(e) => {
+                        batch(() => {
+                          MODAL_TYPES.forEach((type) => setStore("modal", type as any, false));
+                        });
+                      }}
+                    ></div>
+                  </>
+                );
+              }}
             </Portal>
           </div>
         </div>
