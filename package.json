@@ -20,6 +20,7 @@
   "dependencies": {
     "@melodev/id-maker": "^1.0.1",
     "@solid-primitives/pointer": "^0.2.1",
+    "solid-icons": "^1.0.1",
     "solid-js": "^1.5.1"
   }
 }

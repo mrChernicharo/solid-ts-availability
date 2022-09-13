@@ -1,10 +1,28 @@
-import { createPerPointerListeners } from "@solid-primitives/pointer";
-import { batch, Component, createEffect, createMemo, createSignal, For, onMount, Show } from "solid-js";
+import { createPerPointerListeners, createPointerListeners } from "@solid-primitives/pointer";
+import { batch, Component, createEffect, createMemo, createSignal, For, Match, onMount, Show, Switch } from "solid-js";
 import { createStore } from "solid-js/store";
-import { DEFAULT_SLOT_DURATION, INITIAL_STORE, MIN_SLOT_DURATION, SCROLL_BAR, THEME } from "./lib/constants";
-import { IWeekday, IPalette, IStore } from "./lib/types";
-import { getLocaleHours, getWeekDays, readableTime, snapTime, timeToYPos, yPosToTime } from "./lib/utils";
-
+import { Portal } from "solid-js/web";
+import {
+  DEFAULT_SLOT_DURATION,
+  INITIAL_STORE,
+  MIN_SLOT_DURATION,
+  MODAL_TYPES,
+  SCROLL_BAR,
+  THEME,
+} from "./lib/constants";
+import { IWeekday, IPalette, IStore, ITimeSlot } from "./lib/types";
+import { FiLayers, FiX } from "solid-icons/fi";
+import {
+  findOverlappingSlots,
+  getLocaleHours,
+  getWeekDays,
+  readableTime,
+  snapTime,
+  timeToYPos,
+  yPosToTime,
+} from "./lib/utils";
+// @ts-ignore
+import idMaker from "@melodev/id-maker";
 interface IProps {
   locale: string;
   dayCols: IWeekday[];
@@ -29,14 +47,45 @@ export default function AvailabilityWidget(props: IProps) {
   const timeToY = (time: number) => timeToYPos(time, props.minHour, props.maxHour, props.colHeight);
 
   const readable = (time: number) => readableTime(time, props.locale);
+  const getOverlappingSlots = (clickTime: number) => findOverlappingSlots(clickTime, clickTime, store[store.day!]);
+  const getNearbySlots = (clickTime: number) =>
+    findOverlappingSlots(clickTime - props.snapTo, clickTime + props.snapTo, store[store.day!]);
+
+  const isModalOpen = () =>
+    store.modal.create || store.modal.merge || store.modal.details || store.modal.confirm || store.modal.drop;
 
   const DAY_COLS = () =>
     getWeekDays(props.dayCols, {
       firstDay: props.firstDay,
     }) as IWeekday[];
 
+  const createNewTimeSlot = (day: IWeekday, time: number) => {
+    let [start, end] = [Math.round(time - DEFAULT_SLOT_DURATION / 2), Math.round(time + DEFAULT_SLOT_DURATION / 2)];
+
+    // prevent top overflow on creation
+    if (start < props.minHour * 60) {
+      start = props.minHour * 60;
+      end = props.minHour * 60 + props.snapTo;
+    }
+    // prevent bottom overflow on creation
+    if (end > props.maxHour * 60) {
+      end = props.maxHour * 60;
+      start = props.maxHour * 60 - props.snapTo;
+    } else {
+      [start, end] = [snapTime(start, props.snapTo), snapTime(end, props.snapTo)];
+    }
+
+    const newTimeSlot: ITimeSlot = {
+      id: idMaker(),
+      start,
+      end,
+    };
+    return newTimeSlot;
+  };
+
   const [widgetWidth, setWidgetWidth] = createSignal(props.colWidth * (props.dayCols.length + 0.5));
   const [widgetTop, setWidgetTop] = createSignal(0);
+  const [widgetLeft, setWidgetLeft] = createSignal(0);
 
   const [store, setStore] = createStore<IStore>(INITIAL_STORE);
 
@@ -53,9 +102,14 @@ export default function AvailabilityWidget(props: IProps) {
 
       setWidgetWidth(Math.min(width(), window.innerWidth * 0.96));
       setWidgetTop(widgetRef.getBoundingClientRect().top);
+      setWidgetLeft(widgetRef.getBoundingClientRect().left);
     });
 
     observer.observe(document.body);
+  });
+
+  createEffect(() => {
+    console.log({ l: widgetLeft(), t: widgetTop() });
   });
 
   createEffect(() => {
@@ -63,19 +117,36 @@ export default function AvailabilityWidget(props: IProps) {
   });
 
   createPerPointerListeners({
+    target: () => containerRef,
+    onEnter(e, { onUp }) {
+      onUp(({ x, y }) => {
+        console.log("clicked", store.day);
+        if (store.gesture === "idle") setStore("modal", "create", true);
+        setStore("lastClickPos", { x, y });
+        setStore("lastContainerPos", {
+          x: x - widgetLeft() - props.colWidth / 2,
+          y: y - widgetTop() - props.headerHeight,
+        });
+      });
+    },
+  });
+
+  createPerPointerListeners({
     target: () => document.body,
-    onEnter(e, { onDown, onMove, onUp, onLeave }) {
+    passive: false,
+    onEnter(e, { onDown, onMove, onUp, onLeave, onCancel }) {
       let last: { x: number; y: number } | null;
+      // console.log("entered");
 
       onDown(({ x, y }) => {
         last = { x, y };
       });
-      onUp(() => {
+      onUp(({ x, y }) => {
         last = null;
-        // console.log("dropped", store.slotId, store.day);
-        setStore("gesture", "idle");
 
-        if (!store.slotId || !store.day) return;
+        setTimeout(() => setStore("gesture", "idle"), 100);
+
+        if (!store.slotId || !store.day || !store[store.day!].length) return;
 
         setStore(store.day!, store.slotIdx!, (slot) => ({
           start: snapTime(slot.start, props.snapTo),
@@ -84,9 +155,16 @@ export default function AvailabilityWidget(props: IProps) {
       });
       onLeave(() => {
         last = null;
+        // console.log("left");
+      });
+      onCancel(() => {
+        last = null;
       });
       onMove(({ x, y }) => {
-        if (!last) return;
+        if (!last || store.gesture === "idle") {
+          // console.log("skip");
+          return;
+        }
 
         if (store.gesture === "drag:middle") {
           // console.log({ x: last.x, y: last.y });
@@ -136,6 +214,7 @@ export default function AvailabilityWidget(props: IProps) {
         }
 
         last = { x, y };
+        // console.log(last.y);
       });
     },
   });
@@ -212,6 +291,9 @@ export default function AvailabilityWidget(props: IProps) {
               height: `${props.colHeight}px`,
               width: `${props.dayCols.length * props.colWidth}px`,
             }}
+            // onClick={(e) => {
+
+            // }}
           >
             {/* ********* DAY COLS ********** */}
             <For each={DAY_COLS()}>
@@ -226,6 +308,8 @@ export default function AvailabilityWidget(props: IProps) {
                     });
                     onUp(() => {
                       // setTimeout(() => setStore("day", null), 100);
+                      // console.log("clicked", store.day);
+                      // if (store.gesture === "idle") setStore("modal", "create", true);
                     });
                   },
                 });
@@ -250,14 +334,12 @@ export default function AvailabilityWidget(props: IProps) {
                         let bottomRef!: HTMLDivElement;
 
                         // SLOT LISTENER
-                        createPerPointerListeners({
+                        createPointerListeners({
                           target: () => slotRef,
-                          onEnter(e, { onDown, onMove, onUp, onLeave }) {
-                            onDown(({ x, y }) => {
-                              batch(() => {
-                                setStore("slotId", slot.id);
-                                setStore("slotIdx", idx());
-                              });
+                          onDown: ({ x, y }) => {
+                            batch(() => {
+                              setStore("slotId", slot.id);
+                              setStore("slotIdx", idx());
                             });
                           },
                         });
@@ -265,31 +347,19 @@ export default function AvailabilityWidget(props: IProps) {
                         // MIDDLE LISTENER
                         createPerPointerListeners({
                           target: () => middleRef,
-                          onEnter(e, { onDown, onMove, onUp, onLeave }) {
-                            onDown(({ x, y }) => {
-                              setStore("gesture", "drag:middle");
-                            });
-                          },
+                          onDown: (e) => setStore("gesture", "drag:middle"),
                         });
 
                         // TOP LISTENER
-                        createPerPointerListeners({
+                        createPointerListeners({
                           target: () => topRef,
-                          onEnter(e, { onDown, onMove, onUp, onLeave }) {
-                            onDown(({ x, y }) => {
-                              setStore("gesture", "drag:top");
-                            });
-                          },
+                          onDown: (e) => setStore("gesture", "drag:top"),
                         });
 
                         // BOTTOM LISTENER
-                        createPerPointerListeners({
+                        createPointerListeners({
                           target: () => bottomRef,
-                          onEnter(e, { onDown, onMove, onUp, onLeave }) {
-                            onDown(({ x, y }) => {
-                              setStore("gesture", "drag:bottom");
-                            });
-                          },
+                          onDown: (e) => setStore("gesture", "drag:bottom"),
                         });
 
                         const height = createMemo(() => `${timeToY(slot.end - slot.start)}px`);
@@ -356,6 +426,63 @@ export default function AvailabilityWidget(props: IProps) {
                 );
               }}
             </For>
+
+            {/* ************* MODAL *************** */}
+
+            <Portal mount={document.getElementById("root")!}>
+              <div
+                class="absolute z-50 p-4 top-0 text-lg"
+                style={{
+                  background: `${THEME[props.palette].bg2}`,
+                  display: isModalOpen() ? "block" : "none",
+                  top: `${store.lastClickPos.y}px`,
+                  left: `${store.lastClickPos.x}px`,
+                }}
+              >
+                <Switch>
+                  {() => {
+                    /* @ts-ignore */
+                    return (
+                      <Match when={store.modal.create}>
+                        <button>
+                          <FiX onClick={(e) => setStore("modal", "create", false)} />
+                        </button>
+                        <p>Create</p>
+
+                        <button
+                          onClick={(e) => {
+                            console.log(store.day);
+                            const newSlot = createNewTimeSlot(
+                              store.day!,
+                              yToTime(store.lastContainerPos.y + widgetRef.scrollTop)
+                            );
+                            setStore(store.day!, (slots) => [...slots, newSlot]);
+                            setStore("modal", "create", false);
+                          }}
+                        >
+                          <FiLayers />
+                        </button>
+                      </Match>
+                    );
+                  }}
+                </Switch>
+                {/* {Object.keys(store.modal).filter((k) => store.modal[k])} */}
+              </div>
+
+              {/* ************* OVERLAY *************** */}
+
+              <div
+                class="fixed z-30 w-[10000px] h-[10000px] opacity-10 bg-fuchsia-800"
+                style={{
+                  display: isModalOpen() ? "block" : "none",
+                }}
+                onClick={(e) => {
+                  batch(() => {
+                    MODAL_TYPES.forEach((type) => setStore("modal", type as any, false));
+                  });
+                }}
+              ></div>
+            </Portal>
           </div>
         </div>
       </main>

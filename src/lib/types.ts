@@ -6,6 +6,8 @@ export type IStore = {
   day: IWeekday | null;
   slotId: string | null;
   slotIdx: number | null;
+  lastClickPos: { x: number; y: number };
+  lastContainerPos: { x: number; y: number };
   gesture: "idle" | "drag:middle" | "drag:top" | "drag:bottom";
   Sun: ITimeSlot[];
   Mon: ITimeSlot[];
@@ -14,9 +16,10 @@ export type IStore = {
   Thu: ITimeSlot[];
   Fri: ITimeSlot[];
   Sat: ITimeSlot[];
+  modal: { create: boolean; merge: boolean; details: boolean; confirm: boolean; drop: boolean };
 };
 
-type ITimeSlot = {
+export type ITimeSlot = {
   id: string;
   start: number;
   end: number;

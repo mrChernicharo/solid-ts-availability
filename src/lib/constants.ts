@@ -31,6 +31,8 @@ export const INITIAL_STORE: IStore = {
   day: null,
   slotId: null,
   slotIdx: null,
+  lastClickPos: { x: 0, y: 0 },
+  lastContainerPos: { x: 0, y: 0 },
   gesture: "idle",
   Sun: [],
   Mon: [
@@ -56,6 +58,7 @@ export const INITIAL_STORE: IStore = {
   Thu: [],
   Fri: [],
   Sat: [],
+  modal: { create: false, merge: false, details: false, confirm: false, drop: false },
 };
 
 export const WEEKDAYS: IWeekday[] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -69,3 +72,5 @@ export const SNAP_OPTIONS = [30, 20, 15, 10, 5];
 
 export const DEFAULT_SLOT_DURATION = 30;
 export const MIN_SLOT_DURATION = 15;
+
+export const MODAL_TYPES = ["create", "merge", "details", "confirm", "drop"];

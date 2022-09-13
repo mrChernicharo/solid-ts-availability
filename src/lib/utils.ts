@@ -1,5 +1,5 @@
 import { WEEKDAYS } from "./constants";
-import { IWeekday } from "./types";
+import { ITimeSlot, IWeekday } from "./types";
 
 export const normalizeWeekday = (weekday: string) =>
   (weekday[0].toUpperCase() + weekday.slice(1, 3).toLowerCase()) as IWeekday;
@@ -139,4 +139,17 @@ export function snapTime(time: number, snapFactor: number) {
   // console.log({ time, remainder, newTime, snapFactor });
 
   return newTime;
+}
+
+export function findOverlappingSlots(start: number, end: number, timeSlots: ITimeSlot[]) {
+  // console.log(start, end, timeSlots);
+  const overlappingItems = timeSlots.filter(
+    (s, i) =>
+      (start <= s.start && start <= s.end && end >= s.start && end <= s.end) || // top overlap
+      (start >= s.start && start <= s.end && end >= s.start && end <= s.end) || // fit inside
+      (start >= s.start && start <= s.end && end >= s.start && end >= s.end) || // bottom overlap
+      (start <= s.start && start <= s.end && end >= s.start && end >= s.end) // encompass
+  );
+
+  return overlappingItems;
 }
