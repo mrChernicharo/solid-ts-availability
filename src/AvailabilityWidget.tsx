@@ -43,6 +43,8 @@ interface IProps {
 export default function AvailabilityWidget(props: IProps) {
   let widgetRef!: HTMLDivElement;
   let containerRef!: HTMLDivElement;
+  let timeDiff = 0;
+
   const HOURS = createMemo(() => getLocaleHours(props.minHour, props.maxHour, props.locale));
   const yToTime = (y: number) => yPosToTime(y, props.minHour, props.maxHour, props.colHeight);
   const timeToY = (time: number) => timeToYPos(time, props.minHour, props.maxHour, props.colHeight);
@@ -135,23 +137,29 @@ export default function AvailabilityWidget(props: IProps) {
     target: () => document.body,
     onEnter(e, { onDown, onMove, onUp, onLeave, onCancel }) {
       let last: { x: number; y: number } | null;
+      let timestamp = 0;
       // console.log("entered");
 
       onDown(({ x, y }) => {
         last = { x, y };
-        console.log({ x, y });
+        timestamp = Date.now();
+        // console.log({ x, y });
       });
       onUp(({ x, y }) => {
         last = null;
+        timeDiff = Date.now() - timestamp;
 
         setTimeout(() => setStore("gesture", "idle"), 100);
 
-        if (!store.slotId || !store.day || !store[store.day!].length) return;
+        if (!store.slotId || !store.day || !store[store.day!].length || slotIdx(store.slotId) === -1) return;
 
-        setStore(store.day!, slotIdx(store.slotId), (slot) => ({
-          start: snapTime(slot.start, props.snapTo),
-          end: snapTime(slot.end, props.snapTo),
-        }));
+        console.log(slotIdx(store.slotId));
+
+        setStore(store.day!, slotIdx(store.slotId), (slot) => {
+          console.log(slot);
+
+          return { start: snapTime(slot.start, props.snapTo), end: snapTime(slot.end, props.snapTo) };
+        });
       });
       onLeave(() => {
         last = null;
@@ -371,7 +379,7 @@ export default function AvailabilityWidget(props: IProps) {
                             class="w-full absolute bg-blue-600"
                             style={{ top: top() }}
                             onClick={(e) => {
-                              if (!store.modal.merge && !store.modal.drop) setStore("modal", "details", true);
+                              if (timeDiff < 300) setStore("modal", "details", true);
                             }}
                           >
                             <div
