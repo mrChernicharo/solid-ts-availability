@@ -153,3 +153,47 @@ export function findOverlappingSlots(start: number, end: number, timeSlots: ITim
 
   return overlappingItems;
 }
+
+export function getMergedTimeslots(newTimeSlot: ITimeSlot, timeslots: ITimeSlot[]) {
+  //   if (!newTimeSlot) return timeslots;
+
+  const { start, end } = newTimeSlot;
+
+  const overlappingItems = findOverlappingSlots(start, end, timeslots);
+
+  if (overlappingItems?.length > 0) {
+    const overlappingIds = overlappingItems.map((item) => item.id).concat(newTimeSlot.id);
+
+    const mergedSlot = mergeTimeslots([...timeslots, newTimeSlot], overlappingIds);
+
+    const filteredSlots = timeslots.filter((item) => !overlappingIds.includes(item.id));
+
+    const mergedSlots = [mergedSlot, ...filteredSlots];
+    console.log({ mergedSlot, mergedSlots });
+
+    return { mergedSlots, newSlot: mergedSlot };
+  } else {
+    return { mergedSlots: [...timeslots, newTimeSlot], newSlot: newTimeSlot };
+  }
+}
+
+export function mergeTimeslots(timeSlots: ITimeSlot[], overlappingIds: string[]) {
+  const overlapping = timeSlots.filter((item) => overlappingIds.includes(item.id));
+
+  // console.log('before merge', overlapping);
+
+  const mergedSlot: ITimeSlot = overlapping.reduce(
+    (acc, next) => {
+      (acc.start = Math.min(acc.start, next.start)), (acc.end = Math.max(acc.end, next.end));
+
+      return acc;
+    },
+    {
+      id: overlapping[0].id,
+      start: overlapping[0].start,
+      end: overlapping[0].end,
+    }
+  );
+
+  return mergedSlot;
+}

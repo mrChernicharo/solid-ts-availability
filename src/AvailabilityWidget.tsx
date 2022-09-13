@@ -11,11 +11,12 @@ import {
   THEME,
 } from "./lib/constants";
 import { IWeekday, IPalette, IStore, ITimeSlot } from "./lib/types";
-import { FiCalendar, FiCheck, FiDelete, FiLayers, FiPlus, FiX } from "solid-icons/fi";
+import { FiCalendar, FiCheck, FiDelete, FiLayers, FiPlus, FiTrash, FiX } from "solid-icons/fi";
 import { FaSolidCalendarPlus } from "solid-icons/fa";
 import {
   findOverlappingSlots,
   getLocaleHours,
+  getMergedTimeslots,
   getWeekDays,
   readableTime,
   snapTime,
@@ -44,6 +45,7 @@ export default function AvailabilityWidget(props: IProps) {
   let widgetRef!: HTMLDivElement;
   let containerRef!: HTMLDivElement;
   let timeDiff = 0;
+  let timestamp = Date.now();
 
   const HOURS = createMemo(() => getLocaleHours(props.minHour, props.maxHour, props.locale));
   const yToTime = (y: number) => yPosToTime(y, props.minHour, props.maxHour, props.colHeight);
@@ -51,6 +53,8 @@ export default function AvailabilityWidget(props: IProps) {
 
   const readable = (time: number) => readableTime(time, props.locale);
   const slotIdx = (id: string) => store[store.day!].findIndex((s) => s.id === id);
+  const getSlot = (id: string) => store[store.day!].find((s) => s.id === id);
+
   const getOverlappingSlots = (clickTime: number) => findOverlappingSlots(clickTime, clickTime, store[store.day!]);
   const getNearbySlots = (clickTime: number) =>
     findOverlappingSlots(clickTime - props.snapTo, clickTime + props.snapTo, store[store.day!]);
@@ -123,13 +127,33 @@ export default function AvailabilityWidget(props: IProps) {
   createPointerListeners({
     target: () => containerRef,
     onUp: ({ x, y }) => {
-      console.log("clicked", store.day);
-      if (store.gesture === "idle") setStore("modal", "create", true);
+      timeDiff = Date.now() - timestamp;
+
       setStore("lastClickPos", { x, y });
       setStore("lastContainerPos", {
         x: x - widgetLeft() - props.colWidth / 2,
         y: y - widgetTop() - props.headerHeight,
       });
+
+      // console.log("clicked", store.day, { timeDiff });
+
+      if (!isModalOpen() && timeDiff < 300) {
+        if (getOverlappingSlots(yToTime(store.lastContainerPos.y)).length) {
+          setStore("modal", "details", true);
+          return;
+        }
+
+        if (getNearbySlots(yToTime(store.lastContainerPos.y)).length) {
+          setStore("modal", "merge", true);
+          return;
+        }
+
+        // setStore("slotId", "");
+        setStore("modal", "create", true);
+      }
+      // if (store.gesture === "idle" && timeDiff < 300) {
+      //   setStore("modal", "create", true);
+      // }
     },
   });
 
@@ -137,46 +161,34 @@ export default function AvailabilityWidget(props: IProps) {
     target: () => document.body,
     onEnter(e, { onDown, onMove, onUp, onLeave, onCancel }) {
       let last: { x: number; y: number } | null;
-      let timestamp = 0;
       // console.log("entered");
-
       onDown(({ x, y }) => {
         last = { x, y };
         timestamp = Date.now();
         // console.log({ x, y });
       });
       onUp(({ x, y }) => {
-        last = null;
-        timeDiff = Date.now() - timestamp;
-
         setTimeout(() => setStore("gesture", "idle"), 100);
+        last = null;
 
         if (!store.slotId || !store.day || !store[store.day!].length || slotIdx(store.slotId) === -1) return;
 
-        console.log(slotIdx(store.slotId));
-
-        setStore(store.day!, slotIdx(store.slotId), (slot) => {
-          console.log(slot);
-
-          return { start: snapTime(slot.start, props.snapTo), end: snapTime(slot.end, props.snapTo) };
-        });
+        setStore(store.day!, slotIdx(store.slotId), (slot) => ({
+          start: snapTime(slot.start, props.snapTo),
+          end: snapTime(slot.end, props.snapTo),
+        }));
       });
       onLeave(() => {
         last = null;
-        // console.log("left");
       });
       onCancel(() => {
         last = null;
       });
       onMove(({ x, y }) => {
-        if (!last || store.gesture === "idle") {
-          // console.log("skip");
-          return;
-        }
+        if (!last || store.gesture === "idle") return;
 
         if (store.gesture === "drag:middle") {
           // console.log({ x: last.x, y: last.y });
-
           setStore(store.day!, slotIdx(store.slotId!), (slot) => {
             const newSlot = {
               top: timeToY(slot.start) + y - last!.y,
@@ -299,9 +311,6 @@ export default function AvailabilityWidget(props: IProps) {
               height: `${props.colHeight}px`,
               width: `${props.dayCols.length * props.colWidth}px`,
             }}
-            // onClick={(e) => {
-
-            // }}
           >
             {/* ********* DAY COLS ********** */}
             <For each={DAY_COLS()}>
@@ -313,11 +322,6 @@ export default function AvailabilityWidget(props: IProps) {
                   onEnter(e, { onDown, onUp }) {
                     onDown(({ x, y }) => {
                       setStore("day", day);
-                    });
-                    onUp(() => {
-                      // setTimeout(() => setStore("day", null), 100);
-                      // console.log("clicked", store.day);
-                      // if (store.gesture === "idle") setStore("modal", "create", true);
                     });
                   },
                 });
@@ -373,15 +377,7 @@ export default function AvailabilityWidget(props: IProps) {
                         const top = createMemo(() => `${timeToY(slot.start)}px`);
                         return (
                           /* ********* TIME SLOT ************ */
-                          <div
-                            id={slot.id}
-                            ref={slotRef}
-                            class="w-full absolute bg-blue-600"
-                            style={{ top: top() }}
-                            onClick={(e) => {
-                              if (timeDiff < 300) setStore("modal", "details", true);
-                            }}
-                          >
+                          <div id={slot.id} ref={slotRef} class="w-full absolute bg-blue-600" style={{ top: top() }}>
                             <div
                               ref={topRef}
                               class="absolute top-0 w-full h-3 bg-blue-800 opacity-60"
@@ -469,15 +465,30 @@ export default function AvailabilityWidget(props: IProps) {
                   <button
                     onClick={(e) => {
                       console.log("merge that shit!");
-                      // const newSlot = createNewTimeSlot(
-                      //   store.day!,
-                      //   yToTime(store.lastContainerPos.y + widgetRef.scrollTop)
-                      // );
-                      // setStore(store.day!, (slots) => [...slots, newSlot]);
+                      const slot = createNewTimeSlot(
+                        store.day!,
+                        yToTime(store.lastContainerPos.y + widgetRef.scrollTop)
+                      );
+                      const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
+
+                      setStore(store.day!, mergedSlots);
+                      setStore("slotId", newSlot.id);
                       setStore("modal", "merge", false);
                     }}
                   >
                     <FiLayers />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      const newSlot = createNewTimeSlot(
+                        store.day!,
+                        yToTime(store.lastContainerPos.y + widgetRef.scrollTop)
+                      );
+                      setStore(store.day!, (slots) => [...slots, newSlot]);
+                      setStore("modal", "create", false);
+                    }}
+                  >
+                    <FaSolidCalendarPlus />
                   </button>
                 </section>
 
@@ -496,7 +507,7 @@ export default function AvailabilityWidget(props: IProps) {
                       setStore("modal", "drop", false);
                     }}
                   >
-                    <FaSolidCalendarPlus />
+                    <FiLayers />
                     {/* <FiPlus /> */}
                   </button>
                 </section>
@@ -517,7 +528,7 @@ export default function AvailabilityWidget(props: IProps) {
                       setStore(store.day!, (slots) => slots.filter((s) => s.id !== store.slotId));
                     }}
                   >
-                    <FiDelete />
+                    <FiTrash />
                   </button>
                 </section>
 
