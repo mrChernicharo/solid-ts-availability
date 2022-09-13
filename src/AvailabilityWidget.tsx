@@ -62,10 +62,7 @@ export default function AvailabilityWidget(props: IProps) {
   let timestamp = Date.now();
 
   const HOURS = createMemo(() => getLocaleHours(props.minHour, props.maxHour, props.locale));
-  const DAY_COLS = () =>
-    getWeekDays(props.dayCols, {
-      firstDay: props.firstDay,
-    }) as IWeekday[];
+  const DAY_COLS = () => getWeekDays(props.dayCols, { firstDay: props.firstDay }) as IWeekday[];
 
   const yToTime = (y: number) => yPosToTime(y, props.minHour, props.maxHour, props.colHeight);
   const timeToY = (time: number) => timeToYPos(time, props.minHour, props.maxHour, props.colHeight);
@@ -75,9 +72,8 @@ export default function AvailabilityWidget(props: IProps) {
   const getSlot = (id: string) => store[store.day!].find((s) => s.id === id);
 
   const getOverlappingSlots = (clickTime: number) => findOverlappingSlots(clickTime, clickTime, store[store.day!]);
-  const getNearbySlots = (clickTime: number) => {
-    return findOverlappingSlots(clickTime - props.snapTo, clickTime + props.snapTo, store[store.day!]);
-  };
+  const getNearbySlots = (clickTime: number) =>
+    findOverlappingSlots(clickTime - props.snapTo, clickTime + props.snapTo, store[store.day!]);
 
   const getScreenWidth = () => {
     const widths = [window.innerWidth];
@@ -103,30 +99,16 @@ export default function AvailabilityWidget(props: IProps) {
   const isModalOpen = () =>
     store.modal.create || store.modal.merge || store.modal.details || store.modal.confirm || store.modal.drop;
 
+  const [widgetWidth, setWidgetWidth] = createSignal(0);
+  const [widgetTop, setWidgetTop] = createSignal(0);
+  const [widgetLeft, setWidgetLeft] = createSignal(0);
+
   const [modalTop, setModalTop] = createSignal(0);
   const [modalLeft, setModalLeft] = createSignal(0);
   const [modalHeight, setModalHeight] = createSignal(0);
   const [modalWidth, setModalWidth] = createSignal(0);
 
-  createEffect(() => {
-    isModalOpen();
-    setModalHeight(modalRef.getBoundingClientRect().height);
-    setModalWidth(modalRef.getBoundingClientRect().width);
-    setModalTop((p) => {
-      return store.lastWindowPos.y < getScreenHeight() / 2
-        ? store.lastWindowPos.y + (document.scrollingElement?.scrollTop || 0)
-        : store.lastWindowPos.y + (document.scrollingElement?.scrollTop || 0) - modalHeight();
-    });
-    setModalLeft((p) => {
-      return store.lastWindowPos.x < getScreenWidth() / 2
-        ? store.lastWindowPos.x
-        : store.lastWindowPos.x - modalWidth();
-    });
-  });
-
-  createEffect(() => {
-    console.log(modalHeight());
-  });
+  const [store, setStore] = createStore<IStore>(INITIAL_STORE);
 
   const createNewTimeSlot = (day: IWeekday, time: number) => {
     let [start, end] = [Math.round(time - DEFAULT_SLOT_DURATION / 2), Math.round(time + DEFAULT_SLOT_DURATION / 2)];
@@ -152,12 +134,6 @@ export default function AvailabilityWidget(props: IProps) {
     return newTimeSlot;
   };
 
-  const [widgetWidth, setWidgetWidth] = createSignal(props.colWidth * (props.dayCols.length + 0.5));
-  const [widgetTop, setWidgetTop] = createSignal(0);
-  const [widgetLeft, setWidgetLeft] = createSignal(0);
-
-  const [store, setStore] = createStore<IStore>(INITIAL_STORE);
-
   onMount(() => {
     updateWidgetBounds();
     document.addEventListener("scroll", updateWidgetBounds);
@@ -167,6 +143,22 @@ export default function AvailabilityWidget(props: IProps) {
     document.removeEventListener("scroll", updateWidgetBounds);
   });
 
+  createEffect(() => {
+    if (isModalOpen()) {
+      setModalTop((p) =>
+        store.lastWindowPos.y < getScreenHeight() / 2
+          ? store.lastWindowPos.y + (document.scrollingElement?.scrollTop || 0)
+          : store.lastWindowPos.y + (document.scrollingElement?.scrollTop || 0) - modalHeight()
+      );
+      setModalLeft((p) =>
+        store.lastWindowPos.x < getScreenWidth() / 2 ? store.lastWindowPos.x : store.lastWindowPos.x - modalWidth()
+      );
+      setModalHeight(modalRef.getBoundingClientRect().height);
+      setModalWidth(modalRef.getBoundingClientRect().width);
+    }
+  });
+
+  // resize observer
   createEffect(() => {
     const observer = new ResizeObserver((e) => {
       const wWidth = () => {
@@ -183,9 +175,19 @@ export default function AvailabilityWidget(props: IProps) {
     observer.observe(document.body);
   });
 
-  // createEffect(() => {
-  //   console.log({ widgetWidth: widgetWidth(), widgetLeft: widgetLeft(), widgetTop: widgetTop() });
-  // });
+  createEffect(() => {
+    // console.log({
+    //   widgetWidth: widgetWidth(),
+    //   widgetLeft: widgetLeft(),
+    //   widgetTop: widgetTop(),
+    // });
+    // console.log({
+    //   modalLeft: modalLeft(),
+    //   modalTop: modalTop(),
+    //   modalHeight: modalHeight(),
+    //   modalWidth: modalWidth(),
+    // });
+  });
 
   createEffect(() => {
     props.onChange(store);
@@ -202,8 +204,6 @@ export default function AvailabilityWidget(props: IProps) {
         y: y - widgetTop() + (document.scrollingElement?.scrollTop || 0) - props.headerHeight + widgetRef.scrollTop,
       });
 
-      // console.log("clicked", store.day, { timeDiff });
-
       if (!isModalOpen() && timeDiff < 300) {
         if (getOverlappingSlots(yToTime(store.lastContainerPos.y)).length) {
           setStore("modal", "details", true);
@@ -214,13 +214,9 @@ export default function AvailabilityWidget(props: IProps) {
           setStore("modal", "merge", true);
           return;
         }
-
         // setStore("slotId", "");
         setStore("modal", "create", true);
       }
-      // if (store.gesture === "idle" && timeDiff < 300) {
-      //   setStore("modal", "create", true);
-      // }
     },
   });
 
@@ -613,7 +609,7 @@ export default function AvailabilityWidget(props: IProps) {
                   style={{
                     display: isModalOpen() ? "block" : "none",
                   }}
-                  onClick={(e) => {
+                  onPointerUp={(e) => {
                     batch(() => {
                       MODAL_TYPES.forEach((type) => setStore("modal", type as any, false));
                     });
