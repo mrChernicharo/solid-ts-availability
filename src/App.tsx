@@ -7,13 +7,13 @@ const App: Component = () => {
   const [isOpen, setIsOpen] = createSignal(true);
 
   const [palette, setPalette] = createSignal<IPalette>("dark");
-  const [colHeight, setColHeight] = createSignal(900);
+  const [colHeight, setColHeight] = createSignal(800);
   const [colWidth, setColWidth] = createSignal(100);
   const [widgetHeight, setWidgetHeight] = createSignal(650);
   const [headerHeight, setHeaderHeight] = createSignal(50);
   const [firstDay, setFirstDay] = createSignal<IWeekday>("Mon");
-  const [minHour, setMinHour] = createSignal(0);
-  const [endHour, setEndHour] = createSignal(12);
+  const [minHour, setMinHour] = createSignal(9);
+  const [endHour, setEndHour] = createSignal(17);
   const [snap, setSnap] = createSignal(15);
   const [cols, setCols] = createSignal(WEEKDAYS);
   const [locale, setLocale] = createSignal("pt-BR");

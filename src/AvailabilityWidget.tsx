@@ -264,13 +264,11 @@ export default function AvailabilityWidget(props: IProps) {
         // console.log({ x: last.x, y: last.y });
         setStore(store.day!, slotIdx(store.slotId!), (slot) => {
           const newSlot = {
-            top: timeToY(slot.start) + y - last!.y,
             start: yToTime(timeToY(slot.start) + y - last!.y),
-            end: yToTime(timeToY(slot.end - slot.start) + timeToY(slot.start) + y - last!.y),
+            end: yToTime(timeToY(slot.end) + y - last!.y),
           };
 
-          if (newSlot.top < 0 || newSlot.end > props.maxHour * 60) return slot;
-
+          if (newSlot.start < props.minHour * 60 || newSlot.end > props.maxHour * 60) return slot;
           return newSlot;
         });
       }
@@ -278,15 +276,12 @@ export default function AvailabilityWidget(props: IProps) {
       if (store.gesture === "drag:top") {
         setStore(store.day!, slotIdx(store.slotId!), (slot) => {
           const newSlot = {
-            top: timeToY(slot.start) + y - last!.y,
-            height: timeToY(slot.end - slot.start) + (last!.y - y),
             start: yToTime(timeToY(slot.start) + y - last!.y),
             end: slot.end,
           };
           const duration = newSlot.end - newSlot.start;
 
-          if (newSlot.start < 0 || duration < Math.max(MIN_SLOT_DURATION, props.snapTo)) return slot;
-
+          if (newSlot.start < props.minHour * 60 || duration < Math.max(MIN_SLOT_DURATION, props.snapTo)) return slot;
           return newSlot;
         });
       }
@@ -294,20 +289,17 @@ export default function AvailabilityWidget(props: IProps) {
       if (store.gesture === "drag:bottom") {
         setStore(store.day!, slotIdx(store.slotId!), (slot) => {
           const newSlot = {
-            height: timeToY(slot.end - slot.start) + (y - last!.y),
-            start: slot.start,
-            end: yToTime(timeToY(slot.start) + timeToY(slot.end - slot.start) + (y - last!.y)),
+            ...slot,
+            end: yToTime(timeToY(slot.end) + y - last!.y),
           };
           const duration = newSlot.end - newSlot.start;
 
           if (newSlot.end > props.maxHour * 60 || duration < Math.max(MIN_SLOT_DURATION, props.snapTo)) return slot;
-
           return newSlot;
         });
       }
 
       last = { x, y };
-      // console.log(last.y);
     },
   });
 
@@ -445,7 +437,7 @@ export default function AvailabilityWidget(props: IProps) {
                           onDown: (e) => setStore("gesture", "drag:bottom"),
                         });
 
-                        const height = createMemo(() => `${timeToY(slot.end - slot.start)}px`);
+                        const height = createMemo(() => `${timeToY(slot.end) - timeToY(slot.start)}px`);
                         const top = createMemo(() => `${timeToY(slot.start)}px`);
                         return (
                           /* ********* TIME SLOT ************ */

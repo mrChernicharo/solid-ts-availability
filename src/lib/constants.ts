@@ -35,24 +35,24 @@ export const INITIAL_STORE: IStore = {
   gesture: "idle",
   Sun: [],
   Mon: [
-    {
-      id: idMaker(),
-      start: 0,
-      end: 60,
-    },
+    // {
+    //   id: idMaker(),
+    //   start: 0,
+    //   end: 60,
+    // },
   ],
   Tue: [],
   Wed: [
-    {
-      id: idMaker(),
-      start: 60,
-      end: 180,
-    },
-    {
-      id: idMaker(),
-      start: 240,
-      end: 300,
-    },
+    // {
+    //   id: idMaker(),
+    //   start: 60,
+    //   end: 180,
+    // },
+    // {
+    //   id: idMaker(),
+    //   start: 240,
+    //   end: 300,
+    // },
   ],
   Thu: [],
   Fri: [],
