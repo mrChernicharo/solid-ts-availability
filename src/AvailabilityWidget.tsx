@@ -99,7 +99,7 @@ export default function AvailabilityWidget(props: IProps) {
 
   createEffect(() => {
     const observer = new ResizeObserver((e) => {
-      console.log(e);
+      // console.log(e);
       const width = () => {
         if (props.widgetHeight + SCROLL_BAR >= props.colHeight + props.headerHeight) {
           return props.colWidth * (props.dayCols.length + 0.5) + 2;
@@ -172,6 +172,19 @@ export default function AvailabilityWidget(props: IProps) {
         last = null;
 
         if (!store.slotId || !store.day || !store[store.day!].length || slotIdx(store.slotId) === -1) return;
+
+        // const overlapping = getOverlappingSlots(yToTime(store.lastContainerPos.y)).filter((s) => s.id !== store.slotId);
+
+        const overlapping = findOverlappingSlots(
+          store[store.day!][slotIdx(store.slotId)].start,
+          store[store.day!][slotIdx(store.slotId)].end,
+          store[store.day].filter((s) => s.id !== store[store.day!][slotIdx(store.slotId!)].id)
+        );
+
+        console.log("dropped");
+        if (overlapping.length) {
+          setStore("modal", "drop", true);
+        }
 
         setStore(store.day!, slotIdx(store.slotId), (slot) => ({
           start: snapTime(slot.start, props.snapTo),
@@ -464,7 +477,6 @@ export default function AvailabilityWidget(props: IProps) {
                   <p>Merge</p>
                   <button
                     onClick={(e) => {
-                      console.log("merge that shit!");
                       const slot = createNewTimeSlot(
                         store.day!,
                         yToTime(store.lastContainerPos.y + widgetRef.scrollTop)
@@ -485,7 +497,7 @@ export default function AvailabilityWidget(props: IProps) {
                         yToTime(store.lastContainerPos.y + widgetRef.scrollTop)
                       );
                       setStore(store.day!, (slots) => [...slots, newSlot]);
-                      setStore("modal", "create", false);
+                      setStore("modal", "merge", false);
                     }}
                   >
                     <FaSolidCalendarPlus />
@@ -499,11 +511,14 @@ export default function AvailabilityWidget(props: IProps) {
                   <p>Drop</p>
                   <button
                     onClick={(e) => {
-                      // const newSlot = createNewTimeSlot(
-                      //   store.day!,
-                      //   yToTime(store.lastContainerPos.y + widgetRef.scrollTop)
-                      // );
-                      // setStore(store.day!, (slots) => [...slots, newSlot]);
+                      const slot = createNewTimeSlot(
+                        store.day!,
+                        yToTime(store.lastContainerPos.y + widgetRef.scrollTop)
+                      );
+                      const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
+
+                      setStore(store.day!, mergedSlots);
+                      setStore("slotId", newSlot.id);
                       setStore("modal", "drop", false);
                     }}
                   >
