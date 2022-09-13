@@ -56,6 +56,8 @@ interface IProps {
 export default function AvailabilityWidget(props: IProps) {
   let widgetRef!: HTMLDivElement;
   let containerRef!: HTMLDivElement;
+  let modalRef!: HTMLDivElement;
+
   let timeDiff = 0;
   let timestamp = Date.now();
 
@@ -85,6 +87,14 @@ export default function AvailabilityWidget(props: IProps) {
     return Math.min(...widths);
   };
 
+  const getScreenHeight = () => {
+    const heights = [window.innerHeight];
+
+    if (window.screen?.height) heights.push(window.screen?.height);
+
+    return Math.min(...heights);
+  };
+
   const updateWidgetBounds = () => {
     setWidgetTop(widgetRef.getBoundingClientRect().top + (document.scrollingElement?.scrollTop || 0));
     setWidgetLeft(widgetRef.getBoundingClientRect().left);
@@ -92,6 +102,31 @@ export default function AvailabilityWidget(props: IProps) {
 
   const isModalOpen = () =>
     store.modal.create || store.modal.merge || store.modal.details || store.modal.confirm || store.modal.drop;
+
+  const [modalTop, setModalTop] = createSignal(0);
+  const [modalLeft, setModalLeft] = createSignal(0);
+  const [modalHeight, setModalHeight] = createSignal(0);
+  const [modalWidth, setModalWidth] = createSignal(0);
+
+  createEffect(() => {
+    isModalOpen();
+    setModalHeight(modalRef.getBoundingClientRect().height);
+    setModalWidth(modalRef.getBoundingClientRect().width);
+    setModalTop((p) => {
+      return store.lastWindowPos.y < getScreenHeight() / 2
+        ? store.lastWindowPos.y + (document.scrollingElement?.scrollTop || 0)
+        : store.lastWindowPos.y + (document.scrollingElement?.scrollTop || 0) - modalHeight();
+    });
+    setModalLeft((p) => {
+      return store.lastWindowPos.x < getScreenWidth() / 2
+        ? store.lastWindowPos.x
+        : store.lastWindowPos.x - modalWidth();
+    });
+  });
+
+  createEffect(() => {
+    console.log(modalHeight());
+  });
 
   const createNewTimeSlot = (day: IWeekday, time: number) => {
     let [start, end] = [Math.round(time - DEFAULT_SLOT_DURATION / 2), Math.round(time + DEFAULT_SLOT_DURATION / 2)];
@@ -473,124 +508,118 @@ export default function AvailabilityWidget(props: IProps) {
             {/* ************* MODAL *************** */}
 
             <Portal mount={document.getElementById("root")!}>
-              {() => {
-                const modalTop = createMemo(() => store.lastWindowPos.y + (document.scrollingElement?.scrollTop || 0));
-
-                return (
-                  <>
-                    <div
-                      class="absolute z-50 p-4 top-0 text-lg"
-                      style={{
-                        background: `${THEME[props.palette].bg2}`,
-                        display: isModalOpen() ? "block" : "none",
-                        top: `${modalTop()}px`,
-                        left: `${store.lastWindowPos.x}px`,
+              <>
+                <div
+                  ref={modalRef}
+                  class="absolute z-50 p-4 top-0 text-lg"
+                  style={{
+                    background: `${THEME[props.palette].bg2}`,
+                    display: isModalOpen() ? "block" : "none",
+                    top: `${modalTop()}px`,
+                    left: `${modalLeft()}px`,
+                  }}
+                >
+                  <section style={{ display: store.modal.create ? "block" : "none" }}>
+                    <button>
+                      <FiX onClick={(e) => setStore("modal", "create", false)} />
+                    </button>
+                    <p>Create</p>
+                    <button
+                      onClick={(e) => {
+                        const newSlot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
+                        setStore(store.day!, (slots) => [...slots, newSlot]);
+                        setStore("modal", "create", false);
                       }}
                     >
-                      <section style={{ display: store.modal.create ? "block" : "none" }}>
-                        <button>
-                          <FiX onClick={(e) => setStore("modal", "create", false)} />
-                        </button>
-                        <p>Create</p>
-                        <button
-                          onClick={(e) => {
-                            const newSlot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
-                            setStore(store.day!, (slots) => [...slots, newSlot]);
-                            setStore("modal", "create", false);
-                          }}
-                        >
-                          <FaSolidCalendarPlus />
-                          {/* <FiPlus /> */}
-                        </button>
-                      </section>
+                      <FaSolidCalendarPlus />
+                    </button>
+                  </section>
 
-                      <section style={{ display: store.modal.merge ? "block" : "none" }}>
-                        <button>
-                          <FiX onClick={(e) => setStore("modal", "merge", false)} />
-                        </button>
-                        <p>Merge</p>
-                        <button
-                          onClick={(e) => {
-                            const slot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
-                            const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
-
-                            setStore(store.day!, mergedSlots);
-                            setStore("slotId", newSlot.id);
-                            setStore("modal", "merge", false);
-                          }}
-                        >
-                          <FiLayers />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            const newSlot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
-                            setStore(store.day!, (slots) => [...slots, newSlot]);
-                            setStore("modal", "merge", false);
-                          }}
-                        >
-                          <FaSolidCalendarPlus />
-                        </button>
-                      </section>
-
-                      <section style={{ display: store.modal.drop ? "block" : "none" }}>
-                        <button>
-                          <FiX onClick={(e) => setStore("modal", "drop", false)} />
-                        </button>
-                        <p>Drop</p>
-                        <button
-                          onClick={(e) => {
-                            const slot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
-                            const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
-
-                            setStore(store.day!, mergedSlots);
-                            setStore("slotId", newSlot.id);
-                            setStore("modal", "drop", false);
-                          }}
-                        >
-                          <FiLayers />
-                          {/* <FiPlus /> */}
-                        </button>
-                      </section>
-
-                      <section style={{ display: store.modal.details ? "block" : "none" }}>
-                        <button>
-                          <FiX onClick={(e) => setStore("modal", "details", false)} />
-                        </button>
-
-                        <p>Details</p>
-
-                        <p class="text-xs">{store.slotId}</p>
-
-                        <button onClick={(e) => setStore("modal", "details", false)}>
-                          <FiCheck />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            setStore("modal", "details", false);
-                            setStore(store.day!, (slots) => slots.filter((s) => s.id !== store.slotId));
-                          }}
-                        >
-                          <FiTrash />
-                        </button>
-                      </section>
-                    </div>
-
-                    {/* ************* OVERLAY ***************  */}
-
-                    <div
-                      class="fixed z-30 w-[10000px] h-[10000px] opacity-10 bg-fuchsia-800"
-                      style={{
-                        display: isModalOpen() ? "block" : "none",
-                      }}
+                  <section style={{ display: store.modal.merge ? "block" : "none" }}>
+                    <button>
+                      <FiX onClick={(e) => setStore("modal", "merge", false)} />
+                    </button>
+                    <p>Merge</p>
+                    <button
                       onClick={(e) => {
-                        batch(() => {
-                          MODAL_TYPES.forEach((type) => setStore("modal", type as any, false));
-                        });
+                        const slot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
+                        const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
+
+                        setStore(store.day!, mergedSlots);
+                        setStore("slotId", newSlot.id);
+                        setStore("modal", "merge", false);
                       }}
-                    ></div>
-                  </>
-                );
-              }}
+                    >
+                      <FiLayers />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        const newSlot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
+                        setStore(store.day!, (slots) => [...slots, newSlot]);
+                        setStore("modal", "merge", false);
+                      }}
+                    >
+                      <FaSolidCalendarPlus />
+                    </button>
+                  </section>
+
+                  <section style={{ display: store.modal.drop ? "block" : "none" }}>
+                    <button>
+                      <FiX onClick={(e) => setStore("modal", "drop", false)} />
+                    </button>
+                    <p>Drop</p>
+                    <button
+                      onClick={(e) => {
+                        const slot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
+                        const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
+
+                        setStore(store.day!, mergedSlots);
+                        setStore("slotId", newSlot.id);
+                        setStore("modal", "drop", false);
+                      }}
+                    >
+                      <FiLayers />
+                      {/* <FiPlus /> */}
+                    </button>
+                  </section>
+
+                  <section style={{ display: store.modal.details ? "block" : "none" }}>
+                    <button>
+                      <FiX onClick={(e) => setStore("modal", "details", false)} />
+                    </button>
+
+                    <p>Details</p>
+
+                    <p class="text-xs">{store.slotId}</p>
+
+                    <button onClick={(e) => setStore("modal", "details", false)}>
+                      <FiCheck />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        setStore("modal", "details", false);
+                        setStore(store.day!, (slots) => slots.filter((s) => s.id !== store.slotId));
+                      }}
+                    >
+                      <FiTrash />
+                    </button>
+                  </section>
+                </div>
+
+                {/* ************* OVERLAY ***************  */}
+
+                <div
+                  class="fixed z-30 w-[10000px] h-[10000px] opacity-10 bg-fuchsia-800"
+                  style={{
+                    display: isModalOpen() ? "block" : "none",
+                  }}
+                  onClick={(e) => {
+                    batch(() => {
+                      MODAL_TYPES.forEach((type) => setStore("modal", type as any, false));
+                    });
+                  }}
+                ></div>
+              </>
             </Portal>
           </div>
         </div>
