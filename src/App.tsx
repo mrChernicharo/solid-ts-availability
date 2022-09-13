@@ -187,8 +187,6 @@ const App: Component = () => {
         onChange={(val: any) => setValue(val)}
       />
 
-      <hr />
-
       <pre class="text-xs">
         {JSON.stringify(simplifiedVal(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]), null, 2)}
       </pre>

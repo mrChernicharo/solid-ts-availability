@@ -6,10 +6,10 @@ import {
   createMemo,
   createSignal,
   For,
-  Match,
   onCleanup,
   onMount,
   Show,
+  Match,
   Switch,
 } from "solid-js";
 import { createStore } from "solid-js/store";
@@ -57,6 +57,7 @@ export default function AvailabilityWidget(props: IProps) {
   let widgetRef!: HTMLDivElement;
   let containerRef!: HTMLDivElement;
   let modalRef!: HTMLDivElement;
+  let last: { x: number; y: number } | null;
 
   let timeDiff = 0;
   let timestamp = Date.now();
@@ -94,6 +95,17 @@ export default function AvailabilityWidget(props: IProps) {
   const updateWidgetBounds = () => {
     setWidgetTop(widgetRef.getBoundingClientRect().top + (document.scrollingElement?.scrollTop || 0));
     setWidgetLeft(widgetRef.getBoundingClientRect().left);
+  };
+  const updateWidgetWidth = () => {
+    const wWidth = () => {
+      if (props.widgetHeight + SCROLL_BAR >= props.colHeight + props.headerHeight) {
+        return props.colWidth * (props.dayCols.length + 0.5) + 2;
+      } else {
+        return props.colWidth * (props.dayCols.length + 0.5) + SCROLL_BAR + 2;
+      }
+    };
+
+    setWidgetWidth(Math.min(wWidth(), getScreenWidth() * 0.96));
   };
 
   const isModalOpen = () =>
@@ -134,14 +146,17 @@ export default function AvailabilityWidget(props: IProps) {
     return newTimeSlot;
   };
 
-  onMount(() => {
+  createEffect(() => {
     updateWidgetBounds();
     document.addEventListener("scroll", updateWidgetBounds);
+
+    const observer = new ResizeObserver(updateWidgetWidth);
+    observer.observe(document.body);
   });
 
-  onCleanup(() => {
-    document.removeEventListener("scroll", updateWidgetBounds);
-  });
+  // onCleanup(() => {
+  //   document.removeEventListener("scroll", updateWidgetBounds);
+  // });
 
   createEffect(() => {
     if (isModalOpen()) {
@@ -158,29 +173,12 @@ export default function AvailabilityWidget(props: IProps) {
     }
   });
 
-  // resize observer
   createEffect(() => {
-    const observer = new ResizeObserver((e) => {
-      const wWidth = () => {
-        if (props.widgetHeight + SCROLL_BAR >= props.colHeight + props.headerHeight) {
-          return props.colWidth * (props.dayCols.length + 0.5) + 2;
-        } else {
-          return props.colWidth * (props.dayCols.length + 0.5) + SCROLL_BAR + 2;
-        }
-      };
-
-      setWidgetWidth(Math.min(wWidth(), getScreenWidth() * 0.96));
+    console.log({
+      widgetWidth: widgetWidth(),
+      widgetLeft: widgetLeft(),
+      widgetTop: widgetTop(),
     });
-
-    observer.observe(document.body);
-  });
-
-  createEffect(() => {
-    // console.log({
-    //   widgetWidth: widgetWidth(),
-    //   widgetLeft: widgetLeft(),
-    //   widgetTop: widgetTop(),
-    // });
     // console.log({
     //   modalLeft: modalLeft(),
     //   modalTop: modalTop(),
@@ -220,103 +218,100 @@ export default function AvailabilityWidget(props: IProps) {
     },
   });
 
-  createPerPointerListeners({
+  createPointerListeners({
     target: () => document.body,
-    onEnter(e, { onDown, onMove, onUp, onLeave, onCancel }) {
-      let last: { x: number; y: number } | null;
-      // console.log("entered");
-      onDown(({ x, y }) => {
-        last = { x, y };
-        timestamp = Date.now();
-        // console.log({ x, y });
-      });
-      onUp(({ x, y }) => {
-        setTimeout(() => setStore("gesture", "idle"), 100);
-        last = null;
 
-        if (!store.slotId || !store.day || !store[store.day!].length || slotIdx(store.slotId) === -1) return;
+    onDown: ({ x, y }) => {
+      last = { x, y };
+      timestamp = Date.now();
+      // console.log({ x, y });
+    },
+    onUp: ({ x, y }) => {
+      setTimeout(() => setStore("gesture", "idle"), 100);
+      last = null;
 
-        // const overlapping = getOverlappingSlots(yToTime(store.lastContainerPos.y)).filter((s) => s.id !== store.slotId);
+      if (!store.slotId || !store.day || !store[store.day!].length || slotIdx(store.slotId) === -1) return;
 
-        const overlapping = findOverlappingSlots(
-          store[store.day!][slotIdx(store.slotId)].start,
-          store[store.day!][slotIdx(store.slotId)].end,
-          store[store.day].filter((s) => s.id !== store[store.day!][slotIdx(store.slotId!)].id)
-        );
+      // const overlapping = getOverlappingSlots(yToTime(store.lastContainerPos.y)).filter((s) => s.id !== store.slotId);
 
-        console.log("dropped");
-        if (overlapping.length) {
-          setStore("modal", "drop", true);
-        }
+      const overlapping = findOverlappingSlots(
+        store[store.day!][slotIdx(store.slotId)].start,
+        store[store.day!][slotIdx(store.slotId)].end,
+        store[store.day].filter((s) => s.id !== store[store.day!][slotIdx(store.slotId!)].id)
+      );
 
-        setStore(store.day!, slotIdx(store.slotId), (slot) => ({
-          start: snapTime(slot.start, props.snapTo),
-          end: snapTime(slot.end, props.snapTo),
-        }));
-      });
-      onLeave(() => {
-        last = null;
-      });
-      onCancel(() => {
-        last = null;
-      });
-      onMove(({ x, y }) => {
-        if (!last || store.gesture === "idle") return;
+      console.log("dropped");
+      if (overlapping.length) {
+        setStore("modal", "drop", true);
+      }
 
-        if (store.gesture === "drag:middle") {
-          // console.log({ x: last.x, y: last.y });
-          setStore(store.day!, slotIdx(store.slotId!), (slot) => {
-            const newSlot = {
-              top: timeToY(slot.start) + y - last!.y,
-              start: yToTime(timeToY(slot.start) + y - last!.y),
-              end: yToTime(timeToY(slot.end - slot.start) + timeToY(slot.start) + y - last!.y),
-            };
+      setStore(store.day!, slotIdx(store.slotId), (slot) => ({
+        start: snapTime(slot.start, props.snapTo),
+        end: snapTime(slot.end, props.snapTo),
+      }));
+    },
+    onLeave: () => {
+      last = null;
+    },
+    onCancel: () => {
+      last = null;
+    },
+    onMove: ({ x, y }) => {
+      if (!last || store.gesture === "idle") return;
 
-            if (newSlot.top < 0 || newSlot.end > props.maxHour * 60) return slot;
+      if (store.gesture === "drag:middle") {
+        // console.log({ x: last.x, y: last.y });
+        setStore(store.day!, slotIdx(store.slotId!), (slot) => {
+          const newSlot = {
+            top: timeToY(slot.start) + y - last!.y,
+            start: yToTime(timeToY(slot.start) + y - last!.y),
+            end: yToTime(timeToY(slot.end - slot.start) + timeToY(slot.start) + y - last!.y),
+          };
 
-            return newSlot;
-          });
-        }
+          if (newSlot.top < 0 || newSlot.end > props.maxHour * 60) return slot;
 
-        if (store.gesture === "drag:top") {
-          setStore(store.day!, slotIdx(store.slotId!), (slot) => {
-            const newSlot = {
-              top: timeToY(slot.start) + y - last!.y,
-              height: timeToY(slot.end - slot.start) + (last!.y - y),
-              start: yToTime(timeToY(slot.start) + y - last!.y),
-              end: slot.end,
-            };
-            const duration = newSlot.end - newSlot.start;
+          return newSlot;
+        });
+      }
 
-            if (newSlot.start < 0 || duration < Math.max(MIN_SLOT_DURATION, props.snapTo)) return slot;
+      if (store.gesture === "drag:top") {
+        setStore(store.day!, slotIdx(store.slotId!), (slot) => {
+          const newSlot = {
+            top: timeToY(slot.start) + y - last!.y,
+            height: timeToY(slot.end - slot.start) + (last!.y - y),
+            start: yToTime(timeToY(slot.start) + y - last!.y),
+            end: slot.end,
+          };
+          const duration = newSlot.end - newSlot.start;
 
-            return newSlot;
-          });
-        }
+          if (newSlot.start < 0 || duration < Math.max(MIN_SLOT_DURATION, props.snapTo)) return slot;
 
-        if (store.gesture === "drag:bottom") {
-          setStore(store.day!, slotIdx(store.slotId!), (slot) => {
-            const newSlot = {
-              height: timeToY(slot.end - slot.start) + (y - last!.y),
-              start: slot.start,
-              end: yToTime(timeToY(slot.start) + timeToY(slot.end - slot.start) + (y - last!.y)),
-            };
-            const duration = newSlot.end - newSlot.start;
+          return newSlot;
+        });
+      }
 
-            if (newSlot.end > props.maxHour * 60 || duration < Math.max(MIN_SLOT_DURATION, props.snapTo)) return slot;
+      if (store.gesture === "drag:bottom") {
+        setStore(store.day!, slotIdx(store.slotId!), (slot) => {
+          const newSlot = {
+            height: timeToY(slot.end - slot.start) + (y - last!.y),
+            start: slot.start,
+            end: yToTime(timeToY(slot.start) + timeToY(slot.end - slot.start) + (y - last!.y)),
+          };
+          const duration = newSlot.end - newSlot.start;
 
-            return newSlot;
-          });
-        }
+          if (newSlot.end > props.maxHour * 60 || duration < Math.max(MIN_SLOT_DURATION, props.snapTo)) return slot;
 
-        last = { x, y };
-        // console.log(last.y);
-      });
+          return newSlot;
+        });
+      }
+
+      last = { x, y };
+      // console.log(last.y);
     },
   });
 
   return (
-    <Show when={props.open}>
+    <div style={{ display: props.open ? "block" : "none" }}>
       <main
         ref={widgetRef}
         class="mx-auto my-0 overflow-auto flex flex-col whitespace-nowrap"
@@ -620,6 +615,6 @@ export default function AvailabilityWidget(props: IProps) {
           </div>
         </div>
       </main>
-    </Show>
+    </div>
   );
 }
