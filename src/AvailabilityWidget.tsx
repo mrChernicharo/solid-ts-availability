@@ -37,6 +37,7 @@ import {
   snapTime,
   timeToYPos,
   yPosToTime,
+  getObjWithOmittedProps,
 } from "./lib/utils";
 // @ts-ignore
 import idMaker from "@melodev/id-maker";
@@ -58,9 +59,11 @@ interface IProps {
 
 export default function AvailabilityWidget(props: IProps) {
   let widgetRef!: HTMLDivElement;
-  let containerRef!: HTMLDivElement;
-  let modalRef!: HTMLDivElement;
+  // let containerRef!: HTMLDivElement;
+  // let modalRef!: HTMLDivElement;
   let last: { x: number; y: number } | null;
+  const [containerRef, setContainerRef] = createSignal<HTMLDivElement>();
+  const [modalRef, setModalRef] = createSignal<HTMLDivElement>();
 
   let timeDiff = 0;
   let timestamp = Date.now();
@@ -170,8 +173,8 @@ export default function AvailabilityWidget(props: IProps) {
       setModalLeft((p) =>
         store.lastWindowPos.x < getScreenWidth() / 2 ? store.lastWindowPos.x : store.lastWindowPos.x - modalWidth()
       );
-      setModalHeight(modalRef.getBoundingClientRect().height);
-      setModalWidth(modalRef.getBoundingClientRect().width);
+      setModalHeight(modalRef()!.getBoundingClientRect().height);
+      setModalWidth(modalRef()!.getBoundingClientRect().width);
     }
   });
 
@@ -181,12 +184,12 @@ export default function AvailabilityWidget(props: IProps) {
     //   widgetLeft: widgetLeft(),
     //   widgetTop: widgetTop(),
     // });
-    // console.log({
-    //   modalLeft: modalLeft(),
-    //   modalTop: modalTop(),
-    //   modalHeight: modalHeight(),
-    //   modalWidth: modalWidth(),
-    // });
+    console.log({
+      modalLeft: modalLeft(),
+      modalTop: modalTop(),
+      modalHeight: modalHeight(),
+      modalWidth: modalWidth(),
+    });
   });
 
   createEffect(() => {
@@ -206,8 +209,10 @@ export default function AvailabilityWidget(props: IProps) {
   });
 
   createPointerListeners({
-    target: () => containerRef,
+    target: () => containerRef()!,
     onUp: ({ x, y }) => {
+      console.log("up");
+
       timeDiff = Date.now() - timestamp;
 
       setStore("lastWindowPos", { x, y });
@@ -238,6 +243,7 @@ export default function AvailabilityWidget(props: IProps) {
       timestamp = Date.now();
     },
     onUp: ({ x, y }) => {
+      // console.log("up");
       setTimeout(() => setStore("gesture", "idle"), 100);
       last = null;
 
@@ -308,7 +314,20 @@ export default function AvailabilityWidget(props: IProps) {
   });
 
   return (
-    <Show when={props.open}>
+    <Show
+      when={props.open}
+      fallback={
+        <div>
+          <pre class="text-sm">
+            {JSON.stringify(
+              getObjWithOmittedProps(store, ["modal", "day", "slotId", "lastContainerPos", "lastWindowPos", "gesture"]),
+              null,
+              2
+            )}
+          </pre>
+        </div>
+      }
+    >
       <main
         ref={widgetRef}
         class="mx-auto my-0 overflow-auto flex flex-col whitespace-nowrap"
@@ -366,7 +385,7 @@ export default function AvailabilityWidget(props: IProps) {
 
           {/* ********* TIME GRID ********** */}
           <div
-            ref={containerRef}
+            ref={setContainerRef}
             class="relative inline-block"
             style={{ height: `${props.colHeight}px`, width: `${props.dayCols.length * props.colWidth}px` }}
           >
@@ -507,7 +526,7 @@ export default function AvailabilityWidget(props: IProps) {
               <Show when={isModalOpen()}>
                 <div
                   id="modal"
-                  ref={modalRef}
+                  ref={setModalRef}
                   class="absolute z-50 p-4 top-0 text-lg rounded-lg overflow-clip"
                   style={{
                     background: `${THEME[props.palette].bg2}`,
@@ -612,11 +631,10 @@ export default function AvailabilityWidget(props: IProps) {
                       </section>
                     </Match>
                   </Switch>
+                  {/* ************* OVERLAY ***************  */}
                 </div>
-
-                {/* ************* OVERLAY ***************  */}
                 <div
-                  class="fixed z-30 w-[10000px] h-[10000px] opacity-5 bg-fuchsia-800"
+                  class="fixed top-0 left-0 z-20 w-[10000px] h-[10000px] opacity-10 bg-fuchsia-800"
                   onPointerUp={(e) => MODAL_TYPES.forEach((type) => setStore("modal", type as any, false))}
                 ></div>
               </Show>

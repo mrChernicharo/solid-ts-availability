@@ -1,6 +1,7 @@
 import { Component, createMemo, createSignal, For } from "solid-js";
 import AvailabilityWidget from "./AvailabilityWidget";
 import { SNAP_OPTIONS, THEME, WEEKDAYS } from "./lib/constants";
+import { getObjWithOmittedProps } from "./lib/utils";
 import { IPalette, IWeekday } from "./lib/types";
 
 const App: Component = () => {
@@ -21,14 +22,6 @@ const App: Component = () => {
   const [value, setValue] = createSignal({});
 
   const inputStyle = createMemo(() => ({ color: THEME[palette()].text2, background: THEME[palette()].bg2 }));
-  const simplifiedVal = (omitProps: string[]) => {
-    const val = { ...value() };
-    for (let prop of omitProps) {
-      // @ts-ignore
-      if (prop in val) delete val[prop];
-    }
-    return val;
-  };
 
   return (
     <div>
@@ -188,7 +181,7 @@ const App: Component = () => {
       />
 
       {/* <pre class="text-xs">
-        {JSON.stringify(simplifiedVal(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]), null, 2)}
+        {JSON.stringify(getObjWithOmittedProps(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]), null, 2)}
       </pre> */}
       <pre class="text-xs">{JSON.stringify(value(), null, 2)}</pre>
     </div>
