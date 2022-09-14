@@ -7,7 +7,7 @@ const App: Component = () => {
   const [isOpen, setIsOpen] = createSignal(true);
 
   const [palette, setPalette] = createSignal<IPalette>("dark");
-  const [colHeight, setColHeight] = createSignal(800);
+  const [colHeight, setColHeight] = createSignal(600);
   const [colWidth, setColWidth] = createSignal(100);
   const [widgetHeight, setWidgetHeight] = createSignal(650);
   const [headerHeight, setHeaderHeight] = createSignal(50);
@@ -187,9 +187,9 @@ const App: Component = () => {
         onChange={(val: any) => setValue(val)}
       />
 
-      <pre class="text-xs">
+      {/* <pre class="text-xs">
         {JSON.stringify(simplifiedVal(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]), null, 2)}
-      </pre>
+      </pre> */}
       <pre class="text-xs">{JSON.stringify(value(), null, 2)}</pre>
     </div>
   );
