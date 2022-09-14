@@ -26,6 +26,7 @@ import { IWeekday, IPalette, IStore, ITimeSlot } from "./lib/types";
 import { FiCalendar, FiCheck, FiDelete, FiLayers, FiPlus, FiTrash, FiX } from "solid-icons/fi";
 import { FaSolidCalendarPlus, FaSolidGrip, FaSolidGripLines } from "solid-icons/fa";
 import {
+  createRippleEffect,
   findOverlappingSlots,
   getLocaleHours,
   getMergedTimeslots,
@@ -377,8 +378,10 @@ export default function AvailabilityWidget(props: IProps) {
                 createPerPointerListeners({
                   target: () => columnRef,
                   onEnter(e, { onDown, onUp }) {
-                    onDown(({ x, y }) => {
+                    onDown(({ x, y, offsetX, offsetY }) => {
                       setStore("day", day);
+                      console.log({ target: e.target });
+                      // createRippleEffect(offsetX, offsetY, columnRef);
                     });
                   },
                 });
@@ -386,7 +389,8 @@ export default function AvailabilityWidget(props: IProps) {
                 return (
                   <div
                     ref={columnRef}
-                    class="absolute inline-block z-[2] border-l-[1px]"
+                    data-column={day}
+                    class="absolute inline-block z-[2] border-l-[1px] overflow-clip"
                     style={{
                       "border-color": THEME[props.palette].lightText,
                       width: `${props.colWidth - 1}px`,
@@ -405,9 +409,10 @@ export default function AvailabilityWidget(props: IProps) {
                         // SLOT LISTENER
                         createPointerListeners({
                           target: () => slotRef,
-                          onDown: ({ x, y }) => {
+                          onDown: ({ offsetX, offsetY }) => {
                             batch(() => {
                               setStore("slotId", slot.id);
+                              createRippleEffect(offsetX, offsetY, slotRef);
                             });
                           },
                         });

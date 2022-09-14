@@ -205,3 +205,17 @@ export function hasScrollbar(el: HTMLDivElement, axis: "x" | "y") {
 export function getScrollbarWidth(el: HTMLDivElement, axis: "x" | "y") {
   return axis === "y" ? el.offsetWidth - el.clientWidth : el.offsetHeight - el.clientHeight;
 }
+
+export function createRippleEffect(x: number, y: number, el: HTMLDivElement) {
+  const ripple = document.createElement("span");
+  ripple.style.left = x + "px";
+  ripple.style.top = y + "px";
+
+  el.appendChild(ripple);
+
+  console.log("createRippleEffect", { x, y, ripple });
+
+  setTimeout(() => {
+    ripple.remove();
+  }, 1000);
+}

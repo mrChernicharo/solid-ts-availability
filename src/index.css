@@ -3,6 +3,28 @@
 @tailwind utilities;
 
 html {
-	background-color: #333;
-	color: #eee;
+  background-color: #333;
+  color: #eee;
+}
+
+span {
+  pointer-events: none;
+  position: absolute;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  animation: ripple 1s;
+}
+
+@keyframes ripple {
+  0% {
+    width: 0px;
+    height: 0px;
+    opacity: 0.5;
+  }
+  100% {
+    width: 600px;
+    height: 600px;
+    opacity: 0;
+  }
 }
