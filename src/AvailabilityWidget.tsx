@@ -29,7 +29,9 @@ import {
   findOverlappingSlots,
   getLocaleHours,
   getMergedTimeslots,
+  getScrollbarWidth,
   getWeekDays,
+  hasScrollbar,
   readableTime,
   snapTime,
   timeToYPos,
@@ -82,7 +84,6 @@ export default function AvailabilityWidget(props: IProps) {
 
     return Math.min(...widths);
   };
-
   const getScreenHeight = () => {
     const heights = [window.innerHeight];
     if (window.screen?.height) heights.push(window.screen?.height);
@@ -99,7 +100,8 @@ export default function AvailabilityWidget(props: IProps) {
       if (props.widgetHeight > props.colHeight + props.headerHeight) {
         return props.colWidth * (props.dayCols.length + 0.5);
       } else {
-        return props.colWidth * (props.dayCols.length + 0.5) + SCROLL_BAR;
+        // return props.colWidth * (props.dayCols.length + 0.5) + SCROLL_BAR;
+        return props.colWidth * (props.dayCols.length + 0.5) + getScrollbarWidth(widgetRef, "y");
       }
     };
 
@@ -188,6 +190,18 @@ export default function AvailabilityWidget(props: IProps) {
 
   createEffect(() => {
     props.onChange(store);
+  });
+
+  createEffect(() => {
+    props.colHeight, props.colWidth, props.widgetHeight, props.headerHeight;
+    console.log({
+      xScroll: hasScrollbar(widgetRef, "x"),
+      yScroll: hasScrollbar(widgetRef, "y"),
+      xScrollHeight: getScrollbarWidth(widgetRef, "x"),
+      yScrollWidget: getScrollbarWidth(widgetRef, "y"),
+    });
+
+    updateWidgetWidth();
   });
 
   createPointerListeners({
@@ -298,7 +312,7 @@ export default function AvailabilityWidget(props: IProps) {
         ref={widgetRef}
         class="mx-auto my-0 overflow-auto flex flex-col whitespace-nowrap"
         style={{
-          height: `${props.widgetHeight + SCROLL_BAR + 2}px`,
+          height: `${props.widgetHeight + getScrollbarWidth(widgetRef, "x") + 2}px`,
           width: `${widgetWidth()}px`,
           background: `${THEME[props.palette].bg}`,
           color: `${THEME[props.palette].text}`,

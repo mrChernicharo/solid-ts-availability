@@ -197,3 +197,11 @@ export function mergeTimeslots(timeSlots: ITimeSlot[], overlappingIds: string[])
 
   return mergedSlot;
 }
+
+export function hasScrollbar(el: HTMLDivElement, axis: "x" | "y") {
+  return axis === "x" ? el.scrollWidth > el.clientWidth : el.scrollHeight > el.clientHeight;
+}
+
+export function getScrollbarWidth(el: HTMLDivElement, axis: "x" | "y") {
+  return axis === "y" ? el.offsetWidth - el.clientWidth : el.offsetHeight - el.clientHeight;
+}
