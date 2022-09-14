@@ -24,7 +24,7 @@ import {
 } from "./lib/constants";
 import { IWeekday, IPalette, IStore, ITimeSlot } from "./lib/types";
 import { FiCalendar, FiCheck, FiDelete, FiLayers, FiPlus, FiTrash, FiX } from "solid-icons/fi";
-import { FaSolidCalendarPlus } from "solid-icons/fa";
+import { FaSolidCalendarPlus, FaSolidGrip, FaSolidGripLines } from "solid-icons/fa";
 import {
   findOverlappingSlots,
   getLocaleHours,
@@ -388,6 +388,7 @@ export default function AvailabilityWidget(props: IProps) {
                     ref={columnRef}
                     class="absolute inline-block z-[2] border-l-[1px]"
                     style={{
+                      "border-color": THEME[props.palette].lightText,
                       width: `${props.colWidth - 1}px`,
                       height: `${props.colHeight}px`,
                       left: `${props.colWidth * colIdx()}px`,
@@ -428,28 +429,49 @@ export default function AvailabilityWidget(props: IProps) {
 
                         const height = createMemo(() => `${timeToY(slot.end) - timeToY(slot.start)}px`);
                         const top = createMemo(() => `${timeToY(slot.start)}px`);
+                        const margin = createMemo(() => `${props.colWidth * 0.05}px`);
 
                         /* ********* TIME SLOT ************ */
                         return (
-                          <div id={slot.id} ref={slotRef} class="w-full absolute bg-blue-600" style={{ top: top() }}>
+                          <div
+                            id={slot.id}
+                            ref={slotRef}
+                            class="absolute rounded-lg overflow-clip opacity-80"
+                            style={{
+                              top: top(),
+                              background: THEME[props.palette].primary2,
+                              left: `calc(${margin()} + 0.5px)`,
+                              width: `calc(100% - calc(${margin()} * 2))`,
+                            }}
+                          >
                             <div
                               ref={topRef}
-                              class="absolute top-0 w-full h-3 bg-blue-800 opacity-60"
-                              style={{ "touch-action": "none" }}
-                            ></div>
+                              class="absolute flex justify-center w-1/2 top-0 left-0 opacity-60"
+                              style={{
+                                "touch-action": "none",
+                              }}
+                            >
+                              <FaSolidGrip class="opacity-50 mt-[2px]" />
+                            </div>
                             <div
                               ref={middleRef}
                               class="w-full h-[100%] flex flex-col justify-center items-center overflow-clip text-xs"
                               style={{ "touch-action": "none", "user-select": "none", height: height() }}
                             >
                               <p>{`${readable(slot.start)} - ${readable(slot.end)}`}</p>
-                              <p>{store.slotId === slot.id ? store.gesture : "idle"}</p>
+                              {/* <p>{store.slotId === slot.id ? store.gesture : "idle"}</p> */}
                             </div>
                             <div
                               ref={bottomRef}
-                              class="absolute bottom-0 w-full h-3 bg-blue-800 opacity-60"
-                              style={{ "touch-action": "none" }}
-                            ></div>
+                              class="absolute flex justify-center w-1/2 bottom-0 right-0 opacity-60"
+                              style={{
+                                "touch-action": "none" /**
+                                 height: "min(50%, 16px)"
+                              */,
+                              }}
+                            >
+                              <FaSolidGrip class="opacity-50 mb-[2px]" />
+                            </div>
                           </div>
                         );
                       }}
@@ -482,6 +504,7 @@ export default function AvailabilityWidget(props: IProps) {
                   class="absolute z-50 p-4 top-0 text-lg"
                   style={{
                     background: `${THEME[props.palette].bg2}`,
+                    color: `${THEME[props.palette].text2}`,
                     top: `${modalTop()}px`,
                     left: `${modalLeft()}px`,
                   }}
@@ -571,7 +594,7 @@ export default function AvailabilityWidget(props: IProps) {
 
                 {/* ************* OVERLAY ***************  */}
                 <div
-                  class="fixed z-30 w-[10000px] h-[10000px] opacity-10 bg-fuchsia-800"
+                  class="fixed z-30 w-[10000px] h-[10000px] opacity-5 bg-fuchsia-800"
                   onPointerUp={(e) => MODAL_TYPES.forEach((type) => setStore("modal", type as any, false))}
                 ></div>
               </Show>
