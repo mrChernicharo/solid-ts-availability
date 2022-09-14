@@ -410,16 +410,18 @@ export default function AvailabilityWidget(props: IProps) {
                         createPointerListeners({
                           target: () => slotRef,
                           onDown: ({ offsetX, offsetY }) => {
-                            batch(() => {
-                              setStore("slotId", slot.id);
-                              createRippleEffect(offsetX, offsetY, slotRef);
-                            });
+                            setStore("slotId", slot.id);
                           },
                         });
                         // MIDDLE LISTENER
                         createPointerListeners({
                           target: () => middleRef,
-                          onDown: (e) => setStore("gesture", "drag:middle"),
+                          onDown: ({ offsetX, offsetY, target }) => {
+                            batch(() => {
+                              setStore("gesture", "drag:middle");
+                              createRippleEffect(offsetX, offsetY, slotRef);
+                            });
+                          },
                         });
                         // TOP LISTENER
                         createPointerListeners({
