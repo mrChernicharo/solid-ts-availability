@@ -508,7 +508,7 @@ export default function AvailabilityWidget(props: IProps) {
                 <div
                   id="modal"
                   ref={modalRef}
-                  class="absolute z-50 p-4 top-0 text-lg"
+                  class="absolute z-50 p-4 top-0 text-lg rounded-lg overflow-clip"
                   style={{
                     background: `${THEME[props.palette].bg2}`,
                     color: `${THEME[props.palette].text2}`,
@@ -518,83 +518,98 @@ export default function AvailabilityWidget(props: IProps) {
                 >
                   <Switch>
                     <Match when={store.modal.create}>
-                      <button>
-                        <FiX onClick={(e) => setStore("modal", "create", false)} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          const newSlot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
-                          setStore(store.day!, (slots) => [...slots, newSlot]);
-                          setStore("modal", "create", false);
-                        }}
-                      >
-                        <FaSolidCalendarPlus />
-                      </button>
+                      <section class="text-right">
+                        <button>
+                          <FiX class="text-2xl" onClick={(e) => setStore("modal", "create", false)} />
+                        </button>
+                      </section>
+                      <section>
+                        <button
+                          onClick={(e) => {
+                            const newSlot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
+                            setStore(store.day!, (slots) => [...slots, newSlot]);
+                            setStore("modal", "create", false);
+                          }}
+                        >
+                          <FaSolidCalendarPlus class="text-2xl" />
+                        </button>
+                      </section>
                     </Match>
 
                     <Match when={store.modal.merge}>
-                      <button>
-                        <FiX onClick={(e) => setStore("modal", "merge", false)} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          const slot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
-                          const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
+                      <section class="text-right">
+                        <button>
+                          <FiX class="text-2xl" onClick={(e) => setStore("modal", "merge", false)} />
+                        </button>
+                      </section>
+                      <section>
+                        <button
+                          onClick={(e) => {
+                            const slot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
+                            const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
 
-                          setStore(store.day!, mergedSlots);
-                          setStore("slotId", newSlot.id);
-                          setStore("modal", "merge", false);
-                        }}
-                      >
-                        <FiLayers />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          const newSlot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
-                          setStore(store.day!, (slots) => [...slots, newSlot]);
-                          setStore("modal", "merge", false);
-                        }}
-                      >
-                        <FaSolidCalendarPlus />
-                      </button>
+                            setStore(store.day!, mergedSlots);
+                            setStore("slotId", newSlot.id);
+                            setStore("modal", "merge", false);
+                          }}
+                        >
+                          <FiLayers class="text-2xl" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            const newSlot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
+                            setStore(store.day!, (slots) => [...slots, newSlot]);
+                            setStore("modal", "merge", false);
+                          }}
+                        >
+                          <FaSolidCalendarPlus class="text-2xl" />
+                        </button>
+                      </section>
                     </Match>
 
                     <Match when={store.modal.drop}>
-                      <button>
-                        <FiX onClick={(e) => setStore("modal", "drop", false)} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          const slot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
-                          const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
+                      <section class="text-right">
+                        <button>
+                          <FiX class="text-2xl" onClick={(e) => setStore("modal", "drop", false)} />
+                        </button>
+                      </section>
+                      <section>
+                        <button
+                          onClick={(e) => {
+                            const slot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
+                            const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
 
-                          setStore(store.day!, mergedSlots);
-                          setStore("slotId", newSlot.id);
-                          setStore("modal", "drop", false);
-                        }}
-                      >
-                        <FiLayers />
-                      </button>
+                            setStore(store.day!, mergedSlots);
+                            setStore("slotId", newSlot.id);
+                            setStore("modal", "drop", false);
+                          }}
+                        >
+                          <FiLayers class="text-2xl" />
+                        </button>
+                      </section>
                     </Match>
 
                     <Match when={store.modal.details}>
-                      <button>
-                        <FiX onClick={(e) => setStore("modal", "details", false)} />
-                      </button>
+                      <section class="text-right">
+                        <button>
+                          <FiX class="text-2xl" onClick={(e) => setStore("modal", "details", false)} />
+                        </button>
+                      </section>
 
-                      <p class="text-xs">{store.slotId}</p>
-
-                      <button onClick={(e) => setStore("modal", "details", false)}>
-                        <FiCheck />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          setStore("modal", "details", false);
-                          setStore(store.day!, (slots) => slots.filter((s) => s.id !== store.slotId));
-                        }}
-                      >
-                        <FiTrash />
-                      </button>
+                      <section>
+                        <p class="text-xs">{store.slotId}</p>
+                        <button onClick={(e) => setStore("modal", "details", false)}>
+                          <FiCheck class="text-2xl" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            setStore("modal", "details", false);
+                            setStore(store.day!, (slots) => slots.filter((s) => s.id !== store.slotId));
+                          }}
+                        >
+                          <FiTrash class="text-2xl" />
+                        </button>
+                      </section>
                     </Match>
                   </Switch>
                 </div>
