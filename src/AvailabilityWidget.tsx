@@ -59,6 +59,7 @@ interface IProps {
 export default function AvailabilityWidget(props: IProps) {
   let widgetRef!: HTMLDivElement;
   let containerRef!: HTMLDivElement;
+  let topBarRef!: HTMLDivElement;
   let modalRef!: HTMLDivElement;
   let last: { x: number; y: number } | null;
 
@@ -97,16 +98,23 @@ export default function AvailabilityWidget(props: IProps) {
     setWidgetLeft(widgetRef.getBoundingClientRect().left);
   };
   const updateWidgetWidth = () => {
+    const maxScreenW = getScreenWidth() * 0.96;
+
     const wWidth = () => {
       if (props.widgetHeight > props.colHeight + props.headerHeight) {
         return props.colWidth * (props.dayCols.length + 0.5);
       } else {
-        // return props.colWidth * (props.dayCols.length + 0.5) + SCROLL_BAR;
         return props.colWidth * (props.dayCols.length + 0.5) + getScrollbarWidth(widgetRef, "y");
       }
     };
 
-    setWidgetWidth(Math.min(wWidth(), getScreenWidth() * 0.96));
+    if (maxScreenW < wWidth()) {
+      setWidgetWidth(maxScreenW); // whole widget fits the screen
+      widgetRef.style.overflow = "auto";
+    } else {
+      setWidgetWidth(wWidth()); // widget larger than screen
+      widgetRef.style.overflow = "clip"; // topBar sticks to top
+    }
   };
 
   const isModalOpen = () =>
@@ -311,7 +319,7 @@ export default function AvailabilityWidget(props: IProps) {
     <Show when={props.open}>
       <main
         ref={widgetRef}
-        class="mx-auto my-0 overflow-auto flex flex-col whitespace-nowrap"
+        class="mx-auto my-0 flex flex-col whitespace-nowrap"
         style={{
           height: `${props.widgetHeight + getScrollbarWidth(widgetRef, "x") + 2}px`,
           width: `${widgetWidth()}px`,
@@ -321,6 +329,7 @@ export default function AvailabilityWidget(props: IProps) {
       >
         {/* ********* TOP BAR ********** */}
         <div
+          ref={topBarRef}
           class="sticky inline-flex top-0 z-10 opacity-80 select-none"
           style={{
             height: `${props.headerHeight}px`,

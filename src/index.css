@@ -7,6 +7,10 @@ html {
   color: #eee;
 }
 
+body {
+  overflow: auto;
+}
+
 span {
   pointer-events: none;
   position: absolute;
