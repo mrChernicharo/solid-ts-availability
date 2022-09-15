@@ -219,3 +219,12 @@ export function createRippleEffect(x: number, y: number, el: HTMLDivElement) {
     ripple.remove();
   }, 1000);
 }
+
+export const getObjWithOmittedProps = (object: Object, omitProps: string[]) => {
+  const val = { ...object };
+  for (let prop of omitProps) {
+    // @ts-ignore
+    if (prop in val) delete val[prop];
+  }
+  return val;
+};

@@ -37,6 +37,7 @@ import {
   snapTime,
   timeToYPos,
   yPosToTime,
+  getObjWithOmittedProps,
 } from "./lib/utils";
 // @ts-ignore
 import idMaker from "@melodev/id-maker";
@@ -58,10 +59,12 @@ interface IProps {
 
 export default function AvailabilityWidget(props: IProps) {
   let widgetRef!: HTMLDivElement;
-  let containerRef!: HTMLDivElement;
   let topBarRef!: HTMLDivElement;
-  let modalRef!: HTMLDivElement;
+  // let containerRef!: HTMLDivElement;
+  // let modalRef!: HTMLDivElement;
   let last: { x: number; y: number } | null;
+  const [containerRef, setContainerRef] = createSignal<HTMLDivElement>();
+  const [modalRef, setModalRef] = createSignal<HTMLDivElement>();
 
   let timeDiff = 0;
   let timestamp = Date.now();
@@ -93,12 +96,33 @@ export default function AvailabilityWidget(props: IProps) {
     return Math.min(...heights);
   };
 
-  const updateWidgetBounds = () => {
-    setWidgetTop(widgetRef.getBoundingClientRect().top + (document.scrollingElement?.scrollTop || 0));
+  const updateWidgetBounds = (e: any) => {
+    const widgetAbsTop = widgetRef.getBoundingClientRect().top + (document.scrollingElement?.scrollTop || 0);
+    setWidgetTop(widgetAbsTop);
     setWidgetLeft(widgetRef.getBoundingClientRect().left);
+
+    if (e.isTrusted) {
+      console.log(topBarRef.getBoundingClientRect().top, document.scrollingElement?.scrollTop, widgetTop);
+
+      if (document.scrollingElement?.scrollTop! > widgetAbsTop) {
+        if (getComputedStyle(topBarRef).position !== "fixed") {
+          topBarRef.style.position = "fixed";
+          widgetRef.style.paddingTop = props.headerHeight + "px";
+
+          widgetRef.scrollTo({ left: widgetRef.scrollLeft - 1, behavior: "smooth" });
+        }
+      } else {
+        if (getComputedStyle(topBarRef).position !== "sticky") {
+          topBarRef.style.position = "sticky";
+          widgetRef.style.paddingTop = "0px";
+          widgetRef.scrollTo({ left: widgetRef.scrollLeft + 1, behavior: "smooth" });
+        }
+      }
+    }
   };
+
   const updateWidgetWidth = () => {
-    const maxScreenW = getScreenWidth() * 0.96;
+    const maxScreenW = () => getScreenWidth() * 0.96;
 
     const wWidth = () => {
       if (props.widgetHeight > props.colHeight + props.headerHeight) {
@@ -108,12 +132,12 @@ export default function AvailabilityWidget(props: IProps) {
       }
     };
 
-    if (maxScreenW < wWidth()) {
+    if (maxScreenW() < wWidth()) {
       setWidgetWidth(maxScreenW); // whole widget fits the screen
-      widgetRef.style.overflow = "auto";
+      widgetRef.style.overflowY = "auto";
     } else {
       setWidgetWidth(wWidth()); // widget larger than screen
-      widgetRef.style.overflow = "clip"; // topBar sticks to top
+      widgetRef.style.overflowX = "auto";
     }
   };
 
@@ -158,7 +182,7 @@ export default function AvailabilityWidget(props: IProps) {
   const observer = new ResizeObserver(updateWidgetWidth);
 
   onMount(() => {
-    updateWidgetBounds();
+    updateWidgetBounds({});
     document.addEventListener("scroll", updateWidgetBounds);
     observer.observe(document.body);
   });
@@ -178,8 +202,8 @@ export default function AvailabilityWidget(props: IProps) {
       setModalLeft((p) =>
         store.lastWindowPos.x < getScreenWidth() / 2 ? store.lastWindowPos.x : store.lastWindowPos.x - modalWidth()
       );
-      setModalHeight(modalRef.getBoundingClientRect().height);
-      setModalWidth(modalRef.getBoundingClientRect().width);
+      setModalHeight(modalRef()!.getBoundingClientRect().height);
+      setModalWidth(modalRef()!.getBoundingClientRect().width);
     }
   });
 
@@ -189,12 +213,12 @@ export default function AvailabilityWidget(props: IProps) {
     //   widgetLeft: widgetLeft(),
     //   widgetTop: widgetTop(),
     // });
-    // console.log({
-    //   modalLeft: modalLeft(),
-    //   modalTop: modalTop(),
-    //   modalHeight: modalHeight(),
-    //   modalWidth: modalWidth(),
-    // });
+    console.log({
+      modalLeft: modalLeft(),
+      modalTop: modalTop(),
+      modalHeight: modalHeight(),
+      modalWidth: modalWidth(),
+    });
   });
 
   createEffect(() => {
@@ -214,8 +238,10 @@ export default function AvailabilityWidget(props: IProps) {
   });
 
   createPointerListeners({
-    target: () => containerRef,
+    target: () => containerRef()!,
     onUp: ({ x, y }) => {
+      console.log("up");
+
       timeDiff = Date.now() - timestamp;
 
       setStore("lastWindowPos", { x, y });
@@ -246,6 +272,7 @@ export default function AvailabilityWidget(props: IProps) {
       timestamp = Date.now();
     },
     onUp: ({ x, y }) => {
+      // console.log("up");
       setTimeout(() => setStore("gesture", "idle"), 100);
       last = null;
 
@@ -316,10 +343,31 @@ export default function AvailabilityWidget(props: IProps) {
   });
 
   return (
-    <Show when={props.open}>
+    <Show
+      when={props.open}
+      fallback={
+        <div>
+          <pre class="text-sm">
+            {JSON.stringify(
+              getObjWithOmittedProps(store, ["modal", "day", "slotId", "lastContainerPos", "lastWindowPos", "gesture"]),
+              null,
+              2
+            )}
+          </pre>
+        </div>
+      }
+    >
       <main
         ref={widgetRef}
         class="mx-auto my-0 flex flex-col whitespace-nowrap"
+        onScroll={(e) => {
+          if (getComputedStyle(topBarRef).position === "fixed") {
+            topBarRef.style.transform = `translateX(-${widgetRef.scrollLeft}px)`;
+          }
+          if (getComputedStyle(topBarRef).position === "sticky") {
+            topBarRef.style.transform = `translateX(0px)`;
+          }
+        }}
         style={{
           height: `${props.widgetHeight + getScrollbarWidth(widgetRef, "x") + 2}px`,
           width: `${widgetWidth()}px`,
@@ -375,7 +423,7 @@ export default function AvailabilityWidget(props: IProps) {
 
           {/* ********* TIME GRID ********** */}
           <div
-            ref={containerRef}
+            ref={setContainerRef}
             class="relative inline-block"
             style={{ height: `${props.colHeight}px`, width: `${props.dayCols.length * props.colWidth}px` }}
           >
@@ -516,8 +564,8 @@ export default function AvailabilityWidget(props: IProps) {
               <Show when={isModalOpen()}>
                 <div
                   id="modal"
-                  ref={modalRef}
-                  class="absolute z-50 p-4 top-0 text-lg"
+                  ref={setModalRef}
+                  class="absolute z-50 p-4 top-0 text-lg rounded-lg overflow-clip"
                   style={{
                     background: `${THEME[props.palette].bg2}`,
                     color: `${THEME[props.palette].text2}`,
@@ -527,90 +575,104 @@ export default function AvailabilityWidget(props: IProps) {
                 >
                   <Switch>
                     <Match when={store.modal.create}>
-                      <button>
-                        <FiX onClick={(e) => setStore("modal", "create", false)} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          const newSlot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
-                          setStore(store.day!, (slots) => [...slots, newSlot]);
-                          setStore("modal", "create", false);
-                        }}
-                      >
-                        <FaSolidCalendarPlus />
-                      </button>
+                      <section class="text-right">
+                        <button>
+                          <FiX class="text-2xl" onClick={(e) => setStore("modal", "create", false)} />
+                        </button>
+                      </section>
+                      <section>
+                        <button
+                          onClick={(e) => {
+                            const newSlot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
+                            setStore(store.day!, (slots) => [...slots, newSlot]);
+                            setStore("modal", "create", false);
+                          }}
+                        >
+                          <FaSolidCalendarPlus class="text-2xl" />
+                        </button>
+                      </section>
                     </Match>
 
                     <Match when={store.modal.merge}>
-                      <button>
-                        <FiX onClick={(e) => setStore("modal", "merge", false)} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          const slot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
-                          const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
+                      <section class="text-right">
+                        <button>
+                          <FiX class="text-2xl" onClick={(e) => setStore("modal", "merge", false)} />
+                        </button>
+                      </section>
+                      <section>
+                        <button
+                          onClick={(e) => {
+                            const slot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
+                            const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
 
-                          setStore(store.day!, mergedSlots);
-                          setStore("slotId", newSlot.id);
-                          setStore("modal", "merge", false);
-                        }}
-                      >
-                        <FiLayers />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          const newSlot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
-                          setStore(store.day!, (slots) => [...slots, newSlot]);
-                          setStore("modal", "merge", false);
-                        }}
-                      >
-                        <FaSolidCalendarPlus />
-                      </button>
+                            setStore(store.day!, mergedSlots);
+                            setStore("slotId", newSlot.id);
+                            setStore("modal", "merge", false);
+                          }}
+                        >
+                          <FiLayers class="text-2xl" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            const newSlot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
+                            setStore(store.day!, (slots) => [...slots, newSlot]);
+                            setStore("modal", "merge", false);
+                          }}
+                        >
+                          <FaSolidCalendarPlus class="text-2xl" />
+                        </button>
+                      </section>
                     </Match>
 
                     <Match when={store.modal.drop}>
-                      <button>
-                        <FiX onClick={(e) => setStore("modal", "drop", false)} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          const slot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
-                          const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
+                      <section class="text-right">
+                        <button>
+                          <FiX class="text-2xl" onClick={(e) => setStore("modal", "drop", false)} />
+                        </button>
+                      </section>
+                      <section>
+                        <button
+                          onClick={(e) => {
+                            const slot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
+                            const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
 
-                          setStore(store.day!, mergedSlots);
-                          setStore("slotId", newSlot.id);
-                          setStore("modal", "drop", false);
-                        }}
-                      >
-                        <FiLayers />
-                      </button>
+                            setStore(store.day!, mergedSlots);
+                            setStore("slotId", newSlot.id);
+                            setStore("modal", "drop", false);
+                          }}
+                        >
+                          <FiLayers class="text-2xl" />
+                        </button>
+                      </section>
                     </Match>
 
                     <Match when={store.modal.details}>
-                      <button>
-                        <FiX onClick={(e) => setStore("modal", "details", false)} />
-                      </button>
+                      <section class="text-right">
+                        <button>
+                          <FiX class="text-2xl" onClick={(e) => setStore("modal", "details", false)} />
+                        </button>
+                      </section>
 
-                      <p class="text-xs">{store.slotId}</p>
-
-                      <button onClick={(e) => setStore("modal", "details", false)}>
-                        <FiCheck />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          setStore("modal", "details", false);
-                          setStore(store.day!, (slots) => slots.filter((s) => s.id !== store.slotId));
-                        }}
-                      >
-                        <FiTrash />
-                      </button>
+                      <section>
+                        <p class="text-xs">{store.slotId}</p>
+                        <button onClick={(e) => setStore("modal", "details", false)}>
+                          <FiCheck class="text-2xl" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            setStore("modal", "details", false);
+                            setStore(store.day!, (slots) => slots.filter((s) => s.id !== store.slotId));
+                          }}
+                        >
+                          <FiTrash class="text-2xl" />
+                        </button>
+                      </section>
                     </Match>
                   </Switch>
+                  {/* ************* OVERLAY ***************  */}
                 </div>
-
-                {/* ************* OVERLAY ***************  */}
                 <div
-                  class="fixed z-30 w-[10000px] h-[10000px] opacity-5 bg-fuchsia-800"
+                  class="fixed top-0 left-0 z-20 w-[10000px] h-[10000px] opacity-10 bg-fuchsia-800"
                   onPointerUp={(e) => MODAL_TYPES.forEach((type) => setStore("modal", type as any, false))}
                 ></div>
               </Show>
