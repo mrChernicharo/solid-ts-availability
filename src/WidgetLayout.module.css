@@ -4,10 +4,26 @@ body {
 }
 
 .wrap {
-  /* position: relative; */
+  position: relative;
+  border: 1px dashed green;
+  /* margin: 0 auto; */
   max-width: 960px;
-  margin: 0 auto;
   overscroll-behavior: contain;
+  margin-left: 70px;
+  /* overflow-y: hidden; */
+  /* flex: 1 0 960px; */
+}
+
+.sideBar {
+  width: 70px;
+  position: absolute;
+  background: #efefef;
+  margin-top: 50px;
+  max-height: 500px;
+  overflow-y: scroll;
+}
+.hour {
+  border-bottom: 1px solid #fff;
 }
 
 .headers {
@@ -48,6 +64,7 @@ body {
 
 .track {
   scroll-snap-align: start;
+  flex: 1 0 200px;
 }
 
 .track + .track {

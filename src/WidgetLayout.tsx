@@ -6,6 +6,7 @@ import s from "./WidgetLayout.module.css";
 export default function WidgetLayout(props) {
   let headerRef!: HTMLDivElement;
   let gridRef!: HTMLDivElement;
+  let sideBarRef!: HTMLDivElement;
 
   const [minHour, maxHour] = [7, 21];
 
@@ -17,6 +18,7 @@ export default function WidgetLayout(props) {
   onMount(() => {
     gridRef.addEventListener("scroll", (e) => {
       headerRef.scrollTo({ left: gridRef.scrollLeft });
+      sideBarRef.scrollTo({ top: gridRef.scrollTop });
       setHasXScrollBar(hasScrollbar(gridRef, "x"));
       setHasYScrollBar(hasScrollbar(gridRef, "y"));
     });
@@ -27,57 +29,50 @@ export default function WidgetLayout(props) {
   });
 
   return (
-    <div class={s.wrap}>
-      <div class={s.headers}>
-        <div class={s.scroller} ref={headerRef}>
-          {/* <div class={s.leftShim} style={{ flex: `1 0 50px` }}></div> */}
-          <For each={WEEKDAYS}>
-            {(weekday, idx) => (
-              <div
-                class={s.track}
-                style={{
-                  flex: idx() === 0 ? "1 0 min(33vw, 270px)" : "1 0 min(33vw, 200px)",
-                }}
-              >
-                <div class={s.heading}>{weekday}</div>
-              </div>
-            )}
-          </For>
-          <Show when={hasYScrollBar()}>
-            <div class={s.rightShim} style={{ flex: `1 0 ${getScrollbarWidth(gridRef, "y")}px` }}></div>
-          </Show>
-        </div>
-      </div>
-
-      <div class={s.grid} ref={gridRef}>
-        {/* <div class={s.leftShim} style={{ flex: `1 0 50px` }}></div> */}
-        <div
-          style={{
-            position: "sticky",
-            "min-width": "70px",
-            border: "1px solid",
-            left: 0,
-            height: `${HOURS().length * 100}px`,
-          }}
-        ></div>
-        <For each={WEEKDAYS}>
-          {(weekday, idx) => (
-            <div
-              class={s.track}
-              style={{
-                flex: "1 0 min(33vw, 200px)",
-              }}
-            >
-              <For each={HOURS()}>
-                {(hour) => (
-                  <div class={s.entry}>
-                    <h3>{hour}</h3>
-                  </div>
-                )}
-              </For>
+    <div style={{ border: "1px solid blue" }}>
+      <div ref={sideBarRef} class={s.sideBar}>
+        <For each={HOURS()}>
+          {(hour) => (
+            <div class={s.hour} style={{ height: "100px" }}>
+              {hour}
             </div>
           )}
         </For>
+        <Show when={hasXScrollBar()}>
+          <div class={s.shim} style={{ height: `${getScrollbarWidth(gridRef, "x")}px` }}></div>
+        </Show>
+      </div>
+      <div class={s.wrap}>
+        <div class={s.headers}>
+          <div ref={headerRef} class={s.scroller}>
+            <For each={WEEKDAYS}>
+              {(weekday) => (
+                <div class={s.track}>
+                  <div class={s.heading}>{weekday}</div>
+                </div>
+              )}
+            </For>
+            <Show when={hasYScrollBar()}>
+              <div class={s.shim} style={{ flex: `1 0 ${getScrollbarWidth(gridRef, "y")}px` }}></div>
+            </Show>
+          </div>
+        </div>
+
+        <div class={s.grid} ref={gridRef}>
+          <For each={WEEKDAYS}>
+            {(weekday) => (
+              <div class={s.track}>
+                <For each={HOURS()}>
+                  {(hour) => (
+                    <div class={s.entry}>
+                      <h3>{hour}</h3>
+                    </div>
+                  )}
+                </For>
+              </div>
+            )}
+          </For>
+        </div>
       </div>
     </div>
   );
