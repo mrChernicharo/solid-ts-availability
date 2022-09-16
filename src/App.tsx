@@ -3,6 +3,7 @@ import AvailabilityWidget from "./AvailabilityWidget";
 import { SNAP_OPTIONS, THEME, WEEKDAYS } from "./lib/constants";
 import { getObjWithOmittedProps } from "./lib/utils";
 import { IPalette, IWeekday } from "./lib/types";
+import WidgetLayout from "./WidgetLayout";
 
 const App: Component = () => {
   const [isOpen, setIsOpen] = createSignal(true);
@@ -164,7 +165,7 @@ const App: Component = () => {
         </div>
       </section>
 
-      <AvailabilityWidget
+      {/* <AvailabilityWidget
         locale={locale()}
         dayCols={cols()} // omit days if you want, order doesn't matter, repeated items don't matter
         firstDay={firstDay()} // first dayColumn
@@ -178,7 +179,11 @@ const App: Component = () => {
         colWidth={colWidth()}
         snapTo={snap()}
         onChange={(val: any) => setValue(val)}
-      />
+      /> */}
+
+      <br />
+      <br />
+      <WidgetLayout />
 
       {/* <pre class="text-xs">
         {JSON.stringify(getObjWithOmittedProps(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]), null, 2)}

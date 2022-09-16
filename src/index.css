@@ -3,11 +3,16 @@
 @tailwind utilities;
 
 html {
-  background-color: #333;
-  color: #eee;
+  /* background-color: #333;
+  color: #eee; */
 }
 
-span {
+body {
+  /* overflow: auto; */
+  overflow-x: hidden;
+}
+
+/* span {
   pointer-events: none;
   position: absolute;
   border-radius: 50%;
@@ -27,4 +32,4 @@ span {
     height: 600px;
     opacity: 0;
   }
-}
+} */
