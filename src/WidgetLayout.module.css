@@ -17,10 +17,6 @@ body {
   z-index: 1;
 }
 
-.shim {
-  background: #efefef;
-}
-
 .grid,
 .scroller {
   display: flex;
@@ -33,6 +29,7 @@ body {
 }
 
 .grid {
+  position: relative;
   overflow: auto;
   /* border: solid red; */
   border-width: 1px 0;
@@ -44,8 +41,12 @@ body {
   display: none;
 }
 
+.leftShim,
+.rightShim {
+  background: #efefef;
+}
+
 .track {
-  flex: 1 0 min(33vw, 200px);
   scroll-snap-align: start;
 }
 
@@ -72,7 +73,7 @@ body {
   border: 1px solid #ebebeb;
   border-top: 0;
   background: #fff;
-  height: 5em;
+  height: 100px;
   padding: 1em;
 }
 

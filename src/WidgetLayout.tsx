@@ -23,29 +23,51 @@ export default function WidgetLayout(props) {
   });
 
   createEffect(() => {
-    console.log(hasYScrollBar());
+    // console.log(hasYScrollBar());
   });
 
   return (
     <div class={s.wrap}>
       <div class={s.headers}>
         <div class={s.scroller} ref={headerRef}>
+          {/* <div class={s.leftShim} style={{ flex: `1 0 50px` }}></div> */}
           <For each={WEEKDAYS}>
-            {(weekday) => (
-              <div class={s.track}>
+            {(weekday, idx) => (
+              <div
+                class={s.track}
+                style={{
+                  flex: idx() === 0 ? "1 0 min(33vw, 270px)" : "1 0 min(33vw, 200px)",
+                }}
+              >
                 <div class={s.heading}>{weekday}</div>
               </div>
             )}
           </For>
           <Show when={hasYScrollBar()}>
-            <div class={s.shim} style={{ flex: `1 0 ${getScrollbarWidth(gridRef, "y")}px` }}></div>
+            <div class={s.rightShim} style={{ flex: `1 0 ${getScrollbarWidth(gridRef, "y")}px` }}></div>
           </Show>
         </div>
       </div>
+
       <div class={s.grid} ref={gridRef}>
+        {/* <div class={s.leftShim} style={{ flex: `1 0 50px` }}></div> */}
+        <div
+          style={{
+            position: "sticky",
+            "min-width": "70px",
+            border: "1px solid",
+            left: 0,
+            height: `${HOURS().length * 100}px`,
+          }}
+        ></div>
         <For each={WEEKDAYS}>
-          {(weekday) => (
-            <div class={s.track}>
+          {(weekday, idx) => (
+            <div
+              class={s.track}
+              style={{
+                flex: "1 0 min(33vw, 200px)",
+              }}
+            >
               <For each={HOURS()}>
                 {(hour) => (
                   <div class={s.entry}>
