@@ -14,7 +14,7 @@ const App: Component = () => {
   const [headerHeight, setHeaderHeight] = createSignal(50);
   const [firstDay, setFirstDay] = createSignal<IWeekday>("Mon");
   const [minHour, setMinHour] = createSignal(9);
-  const [endHour, setEndHour] = createSignal(17);
+  const [endHour, setEndHour] = createSignal(18);
   const [snap, setSnap] = createSignal(15);
   const [cols, setCols] = createSignal(WEEKDAYS);
   const [locale, setLocale] = createSignal("pt-BR");
