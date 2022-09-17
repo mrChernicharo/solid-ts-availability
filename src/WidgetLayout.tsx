@@ -29,7 +29,7 @@ export default function WidgetLayout(props) {
   });
 
   return (
-    <div style={{ border: "1px solid blue" }}>
+    <div class={s.widget}>
       <div ref={sideBarRef} class={s.sideBar}>
         <For each={HOURS()}>
           {(hour) => (
@@ -62,13 +62,7 @@ export default function WidgetLayout(props) {
           <For each={WEEKDAYS}>
             {(weekday) => (
               <div class={s.track}>
-                <For each={HOURS()}>
-                  {(hour) => (
-                    <div class={s.entry}>
-                      <h3>{hour}</h3>
-                    </div>
-                  )}
-                </For>
+                <For each={HOURS()}>{(hour) => <div class={s.entry}></div>}</For>
               </div>
             )}
           </For>
