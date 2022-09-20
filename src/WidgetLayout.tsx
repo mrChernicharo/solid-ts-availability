@@ -6,7 +6,6 @@ import s from "./WidgetLayout.module.css";
 export default function WidgetLayout(props) {
   let headerRef!: HTMLDivElement;
   let gridRef!: HTMLDivElement;
-  let sideBarRef!: HTMLDivElement;
 
   const [minHour, maxHour] = [7, 21];
 
@@ -15,36 +14,29 @@ export default function WidgetLayout(props) {
   const [hasYScrollBar, setHasYScrollBar] = createSignal(false);
   const [hasXScrollBar, setHasXScrollBar] = createSignal(false);
 
+  const handleScrolls = () => {
+    headerRef.scrollTo({ left: gridRef.scrollLeft });
+    setHasXScrollBar(hasScrollbar(gridRef, "x"));
+    setHasYScrollBar(hasScrollbar(gridRef, "y"));
+  };
+
   onMount(() => {
-    gridRef.addEventListener("scroll", (e) => {
-      headerRef.scrollTo({ left: gridRef.scrollLeft });
-      sideBarRef.scrollTo({ top: gridRef.scrollTop });
-      setHasXScrollBar(hasScrollbar(gridRef, "x"));
-      setHasYScrollBar(hasScrollbar(gridRef, "y"));
-    });
+    handleScrolls();
+    gridRef.addEventListener("scroll", handleScrolls);
   });
 
   createEffect(() => {
-    // console.log(hasYScrollBar());
+    console.log({ x: hasXScrollBar(), y: hasYScrollBar() });
   });
 
   return (
     <div class={s.widget}>
-      <div ref={sideBarRef} class={s.sideBar}>
-        <For each={HOURS()}>
-          {(hour) => (
-            <div class={s.hour} style={{ height: "100px" }}>
-              {hour}
-            </div>
-          )}
-        </For>
-        <Show when={hasXScrollBar()}>
-          <div class={s.shim} style={{ height: `${getScrollbarWidth(gridRef, "x")}px` }}></div>
-        </Show>
-      </div>
       <div class={s.wrap}>
         <div class={s.headers}>
           <div ref={headerRef} class={s.scroller}>
+            <div class={`${s.track} ${s.time}`}>
+              <div class={s.heading}>time</div>
+            </div>
             <For each={WEEKDAYS}>
               {(weekday) => (
                 <div class={s.track}>
@@ -53,12 +45,15 @@ export default function WidgetLayout(props) {
               )}
             </For>
             <Show when={hasYScrollBar()}>
-              <div class={s.shim} style={{ flex: `1 0 ${getScrollbarWidth(gridRef, "y")}px` }}></div>
+              <div class={s.shim} style={{ flex: `0 0 ${getScrollbarWidth(gridRef, "y")}px` }}></div>
             </Show>
           </div>
         </div>
 
         <div class={s.grid} ref={gridRef}>
+          <div class={`${s.track} ${s.time}`}>
+            <For each={HOURS()}>{(hour) => <div class={s.entry}>{hour}</div>}</For>
+          </div>
           <For each={WEEKDAYS}>
             {(weekday) => (
               <div class={s.track}>
