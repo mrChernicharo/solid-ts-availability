@@ -4,6 +4,7 @@ import { SNAP_OPTIONS, THEME, WEEKDAYS } from "./lib/constants";
 import { getObjWithOmittedProps } from "./lib/utils";
 import { IPalette, IWeekday } from "./lib/types";
 import WidgetLayout from "./WidgetLayout";
+import Layout2 from "./Layout2";
 
 const App: Component = () => {
   const [isOpen, setIsOpen] = createSignal(true);
@@ -183,7 +184,8 @@ const App: Component = () => {
 
       <br />
       <br />
-      <WidgetLayout />
+      <Layout2 />
+      {/* <WidgetLayout /> */}
 
       {/* <pre class="text-xs">
         {JSON.stringify(getObjWithOmittedProps(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]), null, 2)}
