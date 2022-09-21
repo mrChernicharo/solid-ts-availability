@@ -327,8 +327,12 @@ export default function Layout2(props) {
       >
         {/*  */}
         <header
-          class="header sticky top-0 flex bg-blue-400 z-10"
-          style={{ width: props.colWidth * 7 + props.sideBarWidth + "px", translate: `0px ${headerStickyY()}px` }}
+          class="header sticky top-0 flex z-10"
+          style={{
+            width: props.colWidth * 7 + props.sideBarWidth + "px",
+            translate: `0px ${headerStickyY()}px`,
+            background: THEME[props.palette].accent2,
+          }}
         >
           <div class="shim border-l-[1px] bg-red-600" style={{ width: props.sideBarWidth + "px" }}></div>
           <For each={DAY_COLS()}>
@@ -340,10 +344,16 @@ export default function Layout2(props) {
           </For>
         </header>
 
-        <div class="main flex bg-green-400" style={{ width: props.colWidth * 7 + props.sideBarWidth + "px" }}>
+        <div
+          class="main flex"
+          style={{ width: props.colWidth * 7 + props.sideBarWidth + "px", background: THEME[props.palette].bg2 }}
+        >
           {/*  */}
           <aside class="sidebar sticky left-0" style={{ translate: `${sideBarStickyX()}px 0px` }}>
-            <div class="absolute z-20 bg-orange-400" style={{ width: props.sideBarWidth + "px" }}>
+            <div
+              class="absolute z-20"
+              style={{ width: props.sideBarWidth + "px", background: THEME[props.palette].primary2 }}
+            >
               <For each={HOURS()}>
                 {(hour, i) => (
                   <div

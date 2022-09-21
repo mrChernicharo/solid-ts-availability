@@ -16,7 +16,7 @@ body {
   justify-content: center;
 }
 
-/* span {
+span {
   pointer-events: none;
   position: absolute;
   border-radius: 50%;
@@ -36,4 +36,4 @@ body {
     height: 600px;
     opacity: 0;
   }
-} */
+}
