@@ -11,7 +11,7 @@ body {
   /* overflow: auto; */
   /* overflow-x: hidden; */
   height: 300vh;
-  width: 150vh;
+  /* width: 150vh; */
   display: flex;
   justify-content: center;
 }

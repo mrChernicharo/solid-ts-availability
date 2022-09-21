@@ -26,21 +26,6 @@ import { FaSolidCalendarPlus, FaSolidGrip } from "solid-icons/fa";
 import { FiX, FiLayers, FiCheck, FiTrash } from "solid-icons/fi";
 import { Portal } from "solid-js/web";
 
-//     locale={locale()}
-//     dayCols={cols()} // omit days if you want, order doesn't matter, repeated items don't matter
-//     firstDay={firstDay()} // first dayColumn
-//     palette={palette()} // light | dark
-//     open={isOpen()}
-//     minHour={minHour()}
-//     maxHour={endHour()}
-//     widgetHeight={widgetHeight()}
-//     headerHeight={headerHeight()}
-//     colHeight={colHeight()}
-//     colWidth={colWidth()}
-//     sideBarWidth={80}
-//     snapTo={snap()}
-//     onChange={(val: any) => setValue(val)}
-
 export default function Layout2(props) {
   let widgetRef!: HTMLDivElement;
   let last: { x: number; y: number } | null;
@@ -64,8 +49,6 @@ export default function Layout2(props) {
   const [modalWidth, setModalWidth] = createSignal(0);
 
   const HOURS = createMemo(() => getLocaleHours(props.minHour, props.maxHour, "pt-BR"));
-  // const widgetWidth = () => props.colWidth * 7 + props.sideBarWidth + scrollbarWidth();
-
   const DAY_COLS = () => getWeekDays(props.dayCols, { firstDay: props.firstDay }) as IWeekday[];
 
   const yToTime = (y: number) => yPosToTime(y, props.minHour, props.maxHour, props.colHeight);
@@ -130,7 +113,6 @@ export default function Layout2(props) {
     setWidgetTop(widgetAbsTop);
     setWidgetLeft(widgetRef.getBoundingClientRect().left);
   };
-
   const handleDocumentScroll = (ref) => {
     const crossedX =
       document.scrollingElement!.scrollLeft >= ref.getBoundingClientRect().left + document.scrollingElement!.scrollLeft;
@@ -185,12 +167,6 @@ export default function Layout2(props) {
 
   createEffect(() => {
     props.colHeight, props.colWidth, props.widgetHeight, props.headerHeight;
-    // console.log({
-    //   xScroll: hasScrollbar(widgetRef, "x"),
-    //   yScroll: hasScrollbar(widgetRef, "y"),
-    //   xScrollHeight: getScrollbarWidth(widgetRef, "x"),
-    //   yScrollWidget: getScrollbarWidth(widgetRef, "y"),
-    // });
     updateWidgetWidth();
   });
 
@@ -198,6 +174,7 @@ export default function Layout2(props) {
     props.onChange(store);
   });
 
+  // GRID POINTER LISTENER
   createPointerListeners({
     target: () => gridRef()!,
     onUp: ({ x, y }) => {
@@ -226,6 +203,7 @@ export default function Layout2(props) {
     },
   });
 
+  // DOCUMENT POINTER LISTENER
   createPointerListeners({
     target: () => document.body,
     onDown: ({ x, y }) => {
@@ -317,7 +295,7 @@ export default function Layout2(props) {
         </div>
       }
     >
-      <div
+      <main
         ref={widgetRef}
         class="widget overflow-scroll"
         style={{
@@ -325,7 +303,7 @@ export default function Layout2(props) {
           height: props.widgetHeight + "px",
         }}
       >
-        {/*  */}
+        {/* TOP BAR */}
         <header
           class="header sticky top-0 flex z-10"
           style={{
@@ -334,10 +312,17 @@ export default function Layout2(props) {
             background: THEME[props.palette].accent2,
           }}
         >
-          <div class="shim border-l-[1px] bg-red-600" style={{ width: props.sideBarWidth + "px" }}></div>
+          <div style={{ width: props.sideBarWidth + "px" }}></div>
           <For each={DAY_COLS()}>
             {(weekday) => (
-              <div class="border-l-[1px]" style={{ height: props.headerHeight + "px", width: props.colWidth + "px" }}>
+              <div
+                class="border-l-[1px] flex justify-center items-center"
+                style={{
+                  height: props.headerHeight + "px",
+                  width: props.colWidth + "px",
+                  "border-color": THEME[props.palette].lightText,
+                }}
+              >
                 {weekday}
               </div>
             )}
@@ -348,7 +333,7 @@ export default function Layout2(props) {
           class="main flex"
           style={{ width: props.colWidth * 7 + props.sideBarWidth + "px", background: THEME[props.palette].bg2 }}
         >
-          {/*  */}
+          {/* SIDE BAR */}
           <aside class="sidebar sticky left-0" style={{ translate: `${sideBarStickyX()}px 0px` }}>
             <div
               class="absolute z-20"
@@ -357,9 +342,10 @@ export default function Layout2(props) {
               <For each={HOURS()}>
                 {(hour, i) => (
                   <div
-                    class="border-b-[1px]"
+                    class="ml-[1px] flex justify-center"
                     style={{
-                      "border-top": i() ? "" : "1px solid #fff",
+                      "border-color": THEME[props.palette].lightText,
+                      "border-top": i() ? `1px solid` : "",
                       height: props.colHeight / (props.maxHour - props.minHour) + "px",
                     }}
                   >
@@ -370,20 +356,21 @@ export default function Layout2(props) {
             </div>
           </aside>
 
-          {/*  */}
-          <div
+          {/* GRID */}
+          <section
             ref={setGridRef}
             class="columns sticky top-0 flex"
             style={{ width: props.colWidth * 7 + props.sideBarWidth + "px" }}
           >
             <div
-              class="shim bg-red-700 opacity-40"
+              class="shim"
               style={{ width: props.sideBarWidth + "px", "clip-path": `polygon(0 0, 100% 100%, 100% 0)` }}
             ></div>
             <For each={DAY_COLS()}>
               {(weekday, dayIdx) => {
                 let columnRef!: HTMLDivElement;
 
+                // COLUMN POINTER LISTENER
                 createPerPointerListeners({
                   target: () => columnRef,
                   onEnter(e, { onDown, onUp }) {
@@ -394,11 +381,13 @@ export default function Layout2(props) {
                     });
                   },
                 });
+
                 return (
                   <div
                     class="column relative border-l-[1px]"
                     ref={columnRef}
                     style={{
+                      "border-color": THEME[props.palette].lightText,
                       width: props.colWidth + "px",
                       height: props.colHeight + "px",
                     }}
@@ -460,9 +449,7 @@ export default function Layout2(props) {
                             <div
                               ref={topRef}
                               class="absolute flex justify-center w-1/2 top-0 left-0 opacity-60"
-                              style={{
-                                "touch-action": "none",
-                              }}
+                              style={{ "touch-action": "none" }}
                             >
                               <FaSolidGrip class="opacity-50 mt-[2px]" />
                             </div>
@@ -477,17 +464,29 @@ export default function Layout2(props) {
                             <div
                               ref={bottomRef}
                               class="absolute flex justify-center w-1/2 bottom-0 right-0 opacity-60"
-                              style={{
-                                "touch-action": "none" /**
-                                 height: "min(50%, 16px)"
-                              */,
-                              }}
+                              style={{ "touch-action": "none" }}
                             >
                               <FaSolidGrip class="opacity-50 mb-[2px]" />
                             </div>
                           </div>
                         );
                       }}
+                    </For>
+
+                    {/* ********* HOUR LINES ********** */}
+                    <For each={HOURS()}>
+                      {(hour, hourIdx) => (
+                        <Show when={hourIdx() > 0}>
+                          <div
+                            class="absolute h-[1px] pointer-events-none z-[-1]"
+                            style={{
+                              top: `${(props.colHeight / HOURS().length) * hourIdx()}px`,
+                              width: `${props.colWidth - 1}px`,
+                              background: `${THEME[props.palette].lightText}`,
+                            }}
+                          ></div>
+                        </Show>
+                      )}
                     </For>
                   </div>
                 );
@@ -612,9 +611,9 @@ export default function Layout2(props) {
                 ></div>
               </Show>
             </Portal>
-          </div>
+          </section>
         </div>
-      </div>
+      </main>
     </Show>
   );
 }
