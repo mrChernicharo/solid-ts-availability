@@ -1,7 +1,6 @@
 import { createPerPointerListeners, createPointerListeners } from "@solid-primitives/pointer";
 import { batch, createEffect, createMemo, createSignal, For, Match, onCleanup, onMount, Show, Switch } from "solid-js";
-import { createStore } from "solid-js/store";
-import { DEFAULT_SLOT_DURATION, INITIAL_STORE, MIN_SLOT_DURATION, MODAL_TYPES, THEME, WEEKDAYS } from "./lib/constants";
+import { DEFAULT_SLOT_DURATION, MIN_SLOT_DURATION, MODAL_TYPES, THEME, WEEKDAYS } from "./lib/constants";
 import { IStore, ITimeSlot, IWeekday } from "./lib/types";
 // @ts-ignore
 import idMaker from "@melodev/id-maker";
@@ -15,7 +14,6 @@ import {
   getScreenWidth,
   getScrollbarWidth,
   getWeekDays,
-  hasScrollbar,
   readableTime,
   snapTime,
   timeToYPos,
@@ -34,11 +32,10 @@ export default function Layout2(props) {
 
   let timeDiff = 0;
   let timestamp = Date.now();
-  //   const [store, setStore] = createStore<IStore>(INITIAL_STORE);
 
   const [sideBarStickyX, setSideBarStickyX] = createSignal(0);
   const [headerStickyY, setHeaderStickyY] = createSignal(0);
-  const [scrollbarWidth, setScrollBarWidth] = createSignal(0);
+
   const [widgetWidth, setWidgetWidth] = createSignal(0);
   const [widgetTop, setWidgetTop] = createSignal(0);
   const [widgetLeft, setWidgetLeft] = createSignal(0);
@@ -61,10 +58,6 @@ export default function Layout2(props) {
   const getOverlappingSlots = (clickTime: number) => findOverlappingSlots(clickTime, clickTime, store[store.day!]);
   const getNearbySlots = (clickTime: number) =>
     findOverlappingSlots(clickTime - props.snapTo, clickTime + props.snapTo, store[store.day!]);
-
-  const isModalOpen = () =>
-    store.modal.create || store.modal.merge || store.modal.details || store.modal.confirm || store.modal.drop;
-
   const createNewTimeSlot = (day: IWeekday, time: number) => {
     let [start, end] = [Math.round(time - DEFAULT_SLOT_DURATION / 2), Math.round(time + DEFAULT_SLOT_DURATION / 2)];
 
@@ -88,6 +81,9 @@ export default function Layout2(props) {
     };
     return newTimeSlot;
   };
+
+  const isModalOpen = () =>
+    store.modal.create || store.modal.merge || store.modal.details || store.modal.confirm || store.modal.drop;
 
   const updateWidgetWidth = () => {
     const maxScreenW = () => getScreenWidth() * 0.96;
@@ -132,6 +128,7 @@ export default function Layout2(props) {
     }
   };
 
+  // LIFECYCLE EFFECTS
   const observer = new ResizeObserver(updateWidgetWidth);
   onMount(() => {
     document.addEventListener("scroll", (e) => handleDocumentScroll(widgetRef));
@@ -145,7 +142,6 @@ export default function Layout2(props) {
   createEffect(() => {
     updateWidgetWidth();
     updateWidgetBounds();
-    setScrollBarWidth(getScrollbarWidth(widgetRef, "y")); // gotta consider resizing...sometimes scroll widths change
   });
 
   createEffect(() => {
@@ -420,12 +416,23 @@ export default function Layout2(props) {
                         // TOP LISTENER
                         createPointerListeners({
                           target: () => topRef,
-                          onDown: (e) => setStore("gesture", "drag:top"),
+                          onDown: ({ offsetX, offsetY, target }) => {
+                            batch(() => {
+                              setStore("gesture", "drag:top");
+                              createRippleEffect(offsetX, offsetY, topRef);
+                            });
+                          },
                         });
                         // BOTTOM LISTENER
                         createPointerListeners({
                           target: () => bottomRef,
-                          onDown: (e) => setStore("gesture", "drag:bottom"),
+                          // onDown: (e) => setStore("gesture", "drag:bottom"),
+                          onDown: ({ offsetX, offsetY, target }) => {
+                            batch(() => {
+                              setStore("gesture", "drag:bottom");
+                              createRippleEffect(offsetX, offsetY, bottomRef);
+                            });
+                          },
                         });
 
                         const height = createMemo(() => `${timeToY(slot.end) - timeToY(slot.start)}px`);
