@@ -103,7 +103,7 @@ export default function AvailabilityWidget(props: IProps) {
     setWidgetLeft(widgetRef.getBoundingClientRect().left);
 
     if (e.isTrusted) {
-      console.log(topBarRef.getBoundingClientRect().top, document.scrollingElement?.scrollTop, widgetTop);
+      // console.log(topBarRef.getBoundingClientRect().top, document.scrollingElement?.scrollTop, widgetTop);
 
       if (document.scrollingElement?.scrollTop! > widgetAbsTop) {
         if (getComputedStyle(topBarRef).position !== "fixed") {
@@ -134,7 +134,7 @@ export default function AvailabilityWidget(props: IProps) {
     };
 
     if (maxScreenW() < wWidth()) {
-      setWidgetWidth(maxScreenW); // whole widget fits the screen
+      setWidgetWidth(maxScreenW()); // whole widget fits the screen
       widgetRef.style.overflowY = "auto";
     } else {
       setWidgetWidth(wWidth()); // widget larger than screen

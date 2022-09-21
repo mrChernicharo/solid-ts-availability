@@ -206,6 +206,19 @@ export function getScrollbarWidth(el: HTMLDivElement, axis: "x" | "y") {
   return axis === "y" ? el.offsetWidth - el.clientWidth : el.offsetHeight - el.clientHeight;
 }
 
+export const getScreenWidth = () => {
+  const widths = [window.innerWidth];
+  if (window.screen?.width) widths.push(window.screen?.width);
+
+  return Math.min(...widths);
+};
+export const getScreenHeight = () => {
+  const heights = [window.innerHeight];
+  if (window.screen?.height) heights.push(window.screen?.height);
+
+  return Math.min(...heights);
+};
+
 export function createRippleEffect(x: number, y: number, el: HTMLDivElement) {
   const ripple = document.createElement("span");
   ripple.style.left = x + "px";
