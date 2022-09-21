@@ -10,9 +10,9 @@ const App: Component = () => {
   const [isOpen, setIsOpen] = createSignal(true);
 
   const [palette, setPalette] = createSignal<IPalette>("dark");
-  const [colHeight, setColHeight] = createSignal(600);
-  const [colWidth, setColWidth] = createSignal(100);
-  const [widgetHeight, setWidgetHeight] = createSignal(650);
+  const [colHeight, setColHeight] = createSignal(1000);
+  const [colWidth, setColWidth] = createSignal(200);
+  const [widgetHeight, setWidgetHeight] = createSignal(500);
   const [headerHeight, setHeaderHeight] = createSignal(50);
   const [firstDay, setFirstDay] = createSignal<IWeekday>("Mon");
   const [minHour, setMinHour] = createSignal(9);
@@ -184,7 +184,22 @@ const App: Component = () => {
 
       <br />
       <br />
-      <Layout2 />
+      <Layout2
+        locale={locale()}
+        dayCols={cols()} // omit days if you want, order doesn't matter, repeated items don't matter
+        firstDay={firstDay()} // first dayColumn
+        palette={palette()} // light | dark
+        open={isOpen()}
+        minHour={minHour()}
+        maxHour={endHour()}
+        widgetHeight={widgetHeight()}
+        headerHeight={headerHeight()}
+        colHeight={colHeight()}
+        colWidth={colWidth()}
+        sideBarWidth={80}
+        snapTo={snap()}
+        onChange={(val: any) => setValue(val)}
+      />
       {/* <WidgetLayout /> */}
 
       {/* <pre class="text-xs">
