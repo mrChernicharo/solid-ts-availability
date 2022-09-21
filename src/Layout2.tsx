@@ -1,23 +1,30 @@
-import { createPointerListeners } from "@solid-primitives/pointer";
-import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import { createPerPointerListeners, createPointerListeners } from "@solid-primitives/pointer";
+import { batch, createEffect, createMemo, createSignal, For, Match, onCleanup, onMount, Show, Switch } from "solid-js";
 import { createStore } from "solid-js/store";
-import { DEFAULT_SLOT_DURATION, INITIAL_STORE, MIN_SLOT_DURATION, WEEKDAYS } from "./lib/constants";
+import { DEFAULT_SLOT_DURATION, INITIAL_STORE, MIN_SLOT_DURATION, MODAL_TYPES, THEME, WEEKDAYS } from "./lib/constants";
 import { IStore, ITimeSlot, IWeekday } from "./lib/types";
 // @ts-ignore
 import idMaker from "@melodev/id-maker";
 import {
+  createRippleEffect,
   findOverlappingSlots,
   getLocaleHours,
+  getMergedTimeslots,
   getObjWithOmittedProps,
+  getScreenHeight,
   getScreenWidth,
   getScrollbarWidth,
   getWeekDays,
+  hasScrollbar,
   readableTime,
   snapTime,
   timeToYPos,
   yPosToTime,
 } from "./lib/utils";
 import { store, setStore } from "./store";
+import { FaSolidCalendarPlus, FaSolidGrip } from "solid-icons/fa";
+import { FiX, FiLayers, FiCheck, FiTrash } from "solid-icons/fi";
+import { Portal } from "solid-js/web";
 
 //     locale={locale()}
 //     dayCols={cols()} // omit days if you want, order doesn't matter, repeated items don't matter
@@ -37,7 +44,7 @@ import { store, setStore } from "./store";
 export default function Layout2(props) {
   let widgetRef!: HTMLDivElement;
   let last: { x: number; y: number } | null;
-  const [containerRef, setContainerRef] = createSignal<HTMLDivElement>();
+  const [gridRef, setGridRef] = createSignal<HTMLDivElement>();
   const [modalRef, setModalRef] = createSignal<HTMLDivElement>();
 
   let timeDiff = 0;
@@ -50,6 +57,11 @@ export default function Layout2(props) {
   const [widgetWidth, setWidgetWidth] = createSignal(0);
   const [widgetTop, setWidgetTop] = createSignal(0);
   const [widgetLeft, setWidgetLeft] = createSignal(0);
+
+  const [modalTop, setModalTop] = createSignal(0);
+  const [modalLeft, setModalLeft] = createSignal(0);
+  const [modalHeight, setModalHeight] = createSignal(0);
+  const [modalWidth, setModalWidth] = createSignal(0);
 
   const HOURS = createMemo(() => getLocaleHours(props.minHour, props.maxHour, "pt-BR"));
   // const widgetWidth = () => props.colWidth * 7 + props.sideBarWidth + scrollbarWidth();
@@ -99,19 +111,24 @@ export default function Layout2(props) {
 
     const wWidth = () => {
       if (props.widgetHeight > props.colHeight + props.headerHeight) {
-        return props.colWidth * (props.dayCols.length + 0.5);
+        return props.colWidth * props.dayCols.length + props.sideBarWidth;
       } else {
-        return props.colWidth * (props.dayCols.length + 0.5) + getScrollbarWidth(widgetRef, "y");
+        return props.colWidth * props.dayCols.length + props.sideBarWidth + getScrollbarWidth(widgetRef, "y");
       }
     };
 
     if (maxScreenW() < wWidth()) {
-      setWidgetWidth(maxScreenW()); // whole widget fits the screen
-      widgetRef.style.overflowY = "auto";
+      // console.log("doesn't fit");
+      setWidgetWidth(maxScreenW()); // widget larger than screen
     } else {
-      setWidgetWidth(wWidth()); // widget larger than screen
-      widgetRef.style.overflowX = "auto";
+      // console.log("fits");
+      setWidgetWidth(wWidth()); // whole widget fits the screen
     }
+  };
+  const updateWidgetBounds = () => {
+    const widgetAbsTop = widgetRef.getBoundingClientRect().top + (document.scrollingElement?.scrollTop || 0);
+    setWidgetTop(widgetAbsTop);
+    setWidgetLeft(widgetRef.getBoundingClientRect().left);
   };
 
   const handleDocumentScroll = (ref) => {
@@ -132,8 +149,8 @@ export default function Layout2(props) {
       setSideBarStickyX(0);
     }
   };
-  const observer = new ResizeObserver(updateWidgetWidth);
 
+  const observer = new ResizeObserver(updateWidgetWidth);
   onMount(() => {
     document.addEventListener("scroll", (e) => handleDocumentScroll(widgetRef));
     observer.observe(document.body);
@@ -144,11 +161,45 @@ export default function Layout2(props) {
   });
 
   createEffect(() => {
+    updateWidgetWidth();
+    updateWidgetBounds();
     setScrollBarWidth(getScrollbarWidth(widgetRef, "y")); // gotta consider resizing...sometimes scroll widths change
   });
 
+  createEffect(() => {
+    if (isModalOpen()) {
+      setModalTop((p) =>
+        store.lastWindowPos.y < getScreenHeight() / 2
+          ? store.lastWindowPos.y + document.scrollingElement!.scrollTop
+          : store.lastWindowPos.y + document.scrollingElement!.scrollTop - modalHeight()
+      );
+      setModalLeft((p) =>
+        store.lastWindowPos.x < getScreenWidth() / 2
+          ? store.lastWindowPos.x + document.scrollingElement!.scrollLeft
+          : store.lastWindowPos.x + document.scrollingElement!.scrollLeft - modalWidth()
+      );
+      setModalHeight(modalRef()!.getBoundingClientRect().height);
+      setModalWidth(modalRef()!.getBoundingClientRect().width);
+    }
+  });
+
+  createEffect(() => {
+    props.colHeight, props.colWidth, props.widgetHeight, props.headerHeight;
+    // console.log({
+    //   xScroll: hasScrollbar(widgetRef, "x"),
+    //   yScroll: hasScrollbar(widgetRef, "y"),
+    //   xScrollHeight: getScrollbarWidth(widgetRef, "x"),
+    //   yScrollWidget: getScrollbarWidth(widgetRef, "y"),
+    // });
+    updateWidgetWidth();
+  });
+
+  createEffect(() => {
+    props.onChange(store);
+  });
+
   createPointerListeners({
-    target: () => containerRef()!,
+    target: () => gridRef()!,
     onUp: ({ x, y }) => {
       console.log("up");
 
@@ -182,7 +233,6 @@ export default function Layout2(props) {
       timestamp = Date.now();
     },
     onUp: ({ x, y }) => {
-      // console.log("up");
       setTimeout(() => setStore("gesture", "idle"), 100);
       last = null;
 
@@ -272,7 +322,6 @@ export default function Layout2(props) {
         class="widget overflow-scroll"
         style={{
           width: `${widgetWidth()}px`,
-          // width: `min(${widgetWidth()}px, calc(100vw - 4rem))`,
           height: props.widgetHeight + "px",
         }}
       >
@@ -312,34 +361,247 @@ export default function Layout2(props) {
           </aside>
 
           {/*  */}
-          <div class="columns sticky top-0 flex" style={{ width: props.colWidth * 7 + props.sideBarWidth + "px" }}>
+          <div
+            ref={setGridRef}
+            class="columns sticky top-0 flex"
+            style={{ width: props.colWidth * 7 + props.sideBarWidth + "px" }}
+          >
             <div
               class="shim bg-red-700 opacity-40"
               style={{ width: props.sideBarWidth + "px", "clip-path": `polygon(0 0, 100% 100%, 100% 0)` }}
             ></div>
             <For each={DAY_COLS()}>
-              {(weekday) => (
+              {(weekday, dayIdx) => {
+                let columnRef!: HTMLDivElement;
+
+                createPerPointerListeners({
+                  target: () => columnRef,
+                  onEnter(e, { onDown, onUp }) {
+                    onDown(({ x, y, offsetX, offsetY }) => {
+                      setStore("day", weekday);
+                      console.log({ target: e.target });
+                      // createRippleEffect(offsetX, offsetY, columnRef);
+                    });
+                  },
+                });
+                return (
+                  <div
+                    class="column relative border-l-[1px]"
+                    ref={columnRef}
+                    style={{
+                      width: props.colWidth + "px",
+                      height: props.colHeight + "px",
+                    }}
+                  >
+                    {/* ********* TIME SLOTS ************ */}
+                    <For each={store[weekday]}>
+                      {(slot, idx) => {
+                        let slotRef!: HTMLDivElement;
+                        let middleRef!: HTMLDivElement;
+                        let topRef!: HTMLDivElement;
+                        let bottomRef!: HTMLDivElement;
+
+                        // SLOT LISTENER
+                        createPointerListeners({
+                          target: () => slotRef,
+                          onDown: ({ offsetX, offsetY }) => {
+                            setStore("slotId", slot.id);
+                          },
+                        });
+                        // MIDDLE LISTENER
+                        createPointerListeners({
+                          target: () => middleRef,
+                          onDown: ({ offsetX, offsetY, target }) => {
+                            batch(() => {
+                              setStore("gesture", "drag:middle");
+                              createRippleEffect(offsetX, offsetY, slotRef);
+                            });
+                          },
+                        });
+                        // TOP LISTENER
+                        createPointerListeners({
+                          target: () => topRef,
+                          onDown: (e) => setStore("gesture", "drag:top"),
+                        });
+                        // BOTTOM LISTENER
+                        createPointerListeners({
+                          target: () => bottomRef,
+                          onDown: (e) => setStore("gesture", "drag:bottom"),
+                        });
+
+                        const height = createMemo(() => `${timeToY(slot.end) - timeToY(slot.start)}px`);
+                        const top = createMemo(() => `${timeToY(slot.start)}px`);
+                        // const left = () => props.colWidth * (idx() + 1) + "px";
+                        const margin = createMemo(() => `${props.colWidth * 0.05}px`);
+
+                        /* ********* TIME SLOT ************ */
+                        return (
+                          <div
+                            id={slot.id}
+                            ref={slotRef}
+                            class="absolute rounded-lg overflow-clip opacity-80"
+                            style={{
+                              top: top(),
+                              background: THEME[props.palette].primary2,
+                              left: `calc(${margin()} )`,
+                              width: `calc(${props.colWidth}px - calc(${margin()} * 2))`,
+                            }}
+                          >
+                            <div
+                              ref={topRef}
+                              class="absolute flex justify-center w-1/2 top-0 left-0 opacity-60"
+                              style={{
+                                "touch-action": "none",
+                              }}
+                            >
+                              <FaSolidGrip class="opacity-50 mt-[2px]" />
+                            </div>
+                            <div
+                              ref={middleRef}
+                              class="w-full h-[100%] flex flex-col justify-center items-center overflow-clip text-xs"
+                              style={{ "touch-action": "none", "user-select": "none", height: height() }}
+                            >
+                              <p>{`${readable(slot.start)} - ${readable(slot.end)}`}</p>
+                              <p>{store.slotId === slot.id ? store.gesture : "idle"}</p>
+                            </div>
+                            <div
+                              ref={bottomRef}
+                              class="absolute flex justify-center w-1/2 bottom-0 right-0 opacity-60"
+                              style={{
+                                "touch-action": "none" /**
+                                 height: "min(50%, 16px)"
+                              */,
+                              }}
+                            >
+                              <FaSolidGrip class="opacity-50 mb-[2px]" />
+                            </div>
+                          </div>
+                        );
+                      }}
+                    </For>
+                  </div>
+                );
+              }}
+            </For>
+
+            {/* ************* MODAL *************** */}
+            <Portal mount={document.getElementById("root")!}>
+              <Show when={isModalOpen()}>
                 <div
-                  class="column border-l-[1px]"
+                  id="modal"
+                  ref={setModalRef}
+                  class="absolute z-50 p-4 top-0 text-lg rounded-lg overflow-clip"
                   style={{
-                    width: props.colWidth + "px",
+                    background: `${THEME[props.palette].bg2}`,
+                    color: `${THEME[props.palette].text2}`,
+                    top: `${modalTop()}px`,
+                    left: `${modalLeft()}px`,
                   }}
                 >
-                  <For each={HOURS()}>
-                    {(hour) => (
-                      <div
-                        class="border-t-[1px]"
-                        style={{
-                          height: props.colHeight / (props.maxHour - props.minHour) + "px",
-                        }}
-                      >
-                        {hour}
-                      </div>
-                    )}
-                  </For>
+                  <Switch>
+                    <Match when={store.modal.create}>
+                      <section class="text-right">
+                        <button>
+                          <FiX class="text-2xl" onClick={(e) => setStore("modal", "create", false)} />
+                        </button>
+                      </section>
+                      <section>
+                        <button
+                          onClick={(e) => {
+                            const newSlot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
+                            setStore(store.day!, (slots) => [...slots, newSlot]);
+                            setStore("modal", "create", false);
+                          }}
+                        >
+                          <FaSolidCalendarPlus class="text-2xl" />
+                        </button>
+                      </section>
+                    </Match>
+
+                    <Match when={store.modal.merge}>
+                      <section class="text-right">
+                        <button>
+                          <FiX class="text-2xl" onClick={(e) => setStore("modal", "merge", false)} />
+                        </button>
+                      </section>
+                      <section>
+                        <button
+                          onClick={(e) => {
+                            const slot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
+                            const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
+
+                            setStore(store.day!, mergedSlots);
+                            setStore("slotId", newSlot.id);
+                            setStore("modal", "merge", false);
+                          }}
+                        >
+                          <FiLayers class="text-2xl" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            const newSlot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
+                            setStore(store.day!, (slots) => [...slots, newSlot]);
+                            setStore("modal", "merge", false);
+                          }}
+                        >
+                          <FaSolidCalendarPlus class="text-2xl" />
+                        </button>
+                      </section>
+                    </Match>
+
+                    <Match when={store.modal.drop}>
+                      <section class="text-right">
+                        <button>
+                          <FiX class="text-2xl" onClick={(e) => setStore("modal", "drop", false)} />
+                        </button>
+                      </section>
+                      <section>
+                        <button
+                          onClick={(e) => {
+                            const slot = createNewTimeSlot(store.day!, yToTime(store.lastContainerPos.y));
+                            const { mergedSlots, newSlot } = getMergedTimeslots(slot, store[store.day!]);
+
+                            setStore(store.day!, mergedSlots);
+                            setStore("slotId", newSlot.id);
+                            setStore("modal", "drop", false);
+                          }}
+                        >
+                          <FiLayers class="text-2xl" />
+                        </button>
+                      </section>
+                    </Match>
+
+                    <Match when={store.modal.details}>
+                      <section class="text-right">
+                        <button>
+                          <FiX class="text-2xl" onClick={(e) => setStore("modal", "details", false)} />
+                        </button>
+                      </section>
+
+                      <section>
+                        <p class="text-xs">{store.slotId}</p>
+                        <button onClick={(e) => setStore("modal", "details", false)}>
+                          <FiCheck class="text-2xl" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            setStore("modal", "details", false);
+                            setStore(store.day!, (slots) => slots.filter((s) => s.id !== store.slotId));
+                          }}
+                        >
+                          <FiTrash class="text-2xl" />
+                        </button>
+                      </section>
+                    </Match>
+                  </Switch>
+                  {/* ************* OVERLAY ***************  */}
                 </div>
-              )}
-            </For>
+                <div
+                  class="fixed top-0 left-0 z-20 w-[10000px] h-[10000px] opacity-10 bg-fuchsia-800"
+                  onPointerUp={(e) => MODAL_TYPES.forEach((type) => setStore("modal", type as any, false))}
+                ></div>
+              </Show>
+            </Portal>
           </div>
         </div>
       </div>

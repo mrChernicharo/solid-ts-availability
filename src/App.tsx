@@ -28,7 +28,6 @@ const App: Component = () => {
   return (
     <div>
       <h1 class="text-center text-4xl">Availability Widget</h1>
-
       <section class="controls" style={{ "text-align": "center" }}>
         <div>
           <div>
@@ -165,7 +164,14 @@ const App: Component = () => {
           />
         </div>
       </section>
-
+      <br />
+      <br />
+      <br />
+      <br />
+      <br />
+      <br />
+      <br />
+      <br />
       <Layout2
         locale={locale()}
         dayCols={cols()} // omit days if you want, order doesn't matter, repeated items don't matter
@@ -184,7 +190,7 @@ const App: Component = () => {
       />
       <br />
       <br />
-      <AvailabilityWidget
+      {/* <AvailabilityWidget
         locale={locale()}
         dayCols={cols()} // omit days if you want, order doesn't matter, repeated items don't matter
         firstDay={firstDay()} // first dayColumn
@@ -198,13 +204,10 @@ const App: Component = () => {
         colWidth={colWidth()}
         snapTo={snap()}
         onChange={(val: any) => setValue(val)}
-      />
-
+      /> */}
       <br />
       <br />
-
       {/* <WidgetLayout /> */}
-
       {/* <pre class="text-xs">
         {JSON.stringify(getObjWithOmittedProps(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]), null, 2)}
       </pre> */}
