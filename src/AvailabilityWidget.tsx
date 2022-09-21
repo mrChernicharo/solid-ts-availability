@@ -174,8 +174,7 @@ export default function AvailabilityWidget(props) {
   createPointerListeners({
     target: () => gridRef()!,
     onUp: ({ x, y }) => {
-      console.log("up");
-
+      // console.log("up");
       timeDiff = Date.now() - timestamp;
 
       setStore("lastWindowPos", { x, y });
@@ -207,7 +206,10 @@ export default function AvailabilityWidget(props) {
       timestamp = Date.now();
     },
     onUp: ({ x, y }) => {
-      setTimeout(() => setStore("gesture", "idle"), 100);
+      setTimeout(() => {
+        setStore("gesture", "idle");
+        widgetRef.style.cursor = "default";
+      }, 100);
       last = null;
 
       if (!store.slotId || !store.day || !store[store.day!].length || slotIdx(store.slotId) === -1) return;
@@ -293,7 +295,7 @@ export default function AvailabilityWidget(props) {
     >
       <main
         ref={widgetRef}
-        class="widget overflow-scroll"
+        class="widget overflow-auto"
         style={{
           width: `${widgetWidth()}px`,
           height: props.widgetHeight + "px",
@@ -367,10 +369,17 @@ export default function AvailabilityWidget(props) {
                 createPerPointerListeners({
                   target: () => columnRef,
                   onEnter(e, { onDown, onUp }) {
-                    onDown(({ x, y, offsetX, offsetY }) => {
+                    onDown(({ x, y, pageY, offsetX, offsetY }) => {
                       setStore("day", weekday);
-                      console.log({ target: e.target });
-                      // createRippleEffect(offsetX, offsetY, columnRef);
+
+                      if (store.gesture === "idle") {
+                        createRippleEffect(
+                          offsetX,
+                          pageY - widgetTop() - props.headerHeight + widgetRef.scrollTop - document.body.scrollTop,
+                          columnRef,
+                          true
+                        );
+                      }
                     });
                   },
                 });
@@ -406,6 +415,7 @@ export default function AvailabilityWidget(props) {
                           onDown: ({ offsetX, offsetY, target }) => {
                             batch(() => {
                               setStore("gesture", "drag:middle");
+                              widgetRef.style.cursor = "move";
                               createRippleEffect(offsetX, offsetY, slotRef);
                             });
                           },
@@ -416,6 +426,7 @@ export default function AvailabilityWidget(props) {
                           onDown: ({ offsetX, offsetY, target }) => {
                             batch(() => {
                               setStore("gesture", "drag:top");
+                              widgetRef.style.cursor = "ns-resize";
                               createRippleEffect(offsetX, offsetY, topRef);
                             });
                           },
@@ -423,10 +434,10 @@ export default function AvailabilityWidget(props) {
                         // BOTTOM LISTENER
                         createPointerListeners({
                           target: () => bottomRef,
-                          // onDown: (e) => setStore("gesture", "drag:bottom"),
                           onDown: ({ offsetX, offsetY, target }) => {
                             batch(() => {
                               setStore("gesture", "drag:bottom");
+                              widgetRef.style.cursor = "ns-resize";
                               createRippleEffect(offsetX, offsetY, bottomRef);
                             });
                           },
@@ -448,10 +459,16 @@ export default function AvailabilityWidget(props) {
                               left: `calc(${margin()} )`,
                               width: `calc(${props.colWidth}px - calc(${margin()} * 2))`,
                             }}
+                            onPointerOver={(e) => {
+                              if (store.gesture === "idle") widgetRef.style.cursor = "grab";
+                            }}
+                            onPointerLeave={(e) => {
+                              if (store.gesture === "idle") widgetRef.style.cursor = "default";
+                            }}
                           >
                             <div
                               ref={topRef}
-                              class="absolute flex justify-center w-1/2 top-0 left-0 opacity-60"
+                              class="absolute flex justify-center w-2/5 top-0 left-0 opacity-60"
                               style={{ "touch-action": "none" }}
                             >
                               <FaSolidGrip class="opacity-50 mt-[2px]" />
@@ -462,11 +479,11 @@ export default function AvailabilityWidget(props) {
                               style={{ "touch-action": "none", "user-select": "none", height: height() }}
                             >
                               <p>{`${readable(slot.start)} - ${readable(slot.end)}`}</p>
-                              <p>{store.slotId === slot.id ? store.gesture : "idle"}</p>
+                              {/* <p>{store.slotId === slot.id ? store.gesture : "idle"}</p> */}
                             </div>
                             <div
                               ref={bottomRef}
-                              class="absolute flex justify-center w-1/2 bottom-0 right-0 opacity-60"
+                              class="absolute flex justify-center w-2/5 bottom-0 right-0 opacity-60"
                               style={{ "touch-action": "none" }}
                             >
                               <FaSolidGrip class="opacity-50 mb-[2px]" />
@@ -478,7 +495,6 @@ export default function AvailabilityWidget(props) {
 
                     {/* ********* HOUR LINES ********** */}
                     <For each={HOURS()}>
-                      {/* <For each={HOURS().filter((h, i) => !!i)}> */}
                       {(hour, hourIdx) => (
                         <div
                           class="absolute h-[1px] pointer-events-none z-[-1]"

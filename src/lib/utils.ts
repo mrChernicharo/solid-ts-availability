@@ -142,7 +142,7 @@ export function snapTime(time: number, snapFactor: number) {
 }
 
 export function findOverlappingSlots(start: number, end: number, timeSlots: ITimeSlot[]) {
-  console.log(start, end, timeSlots);
+  // console.log(start, end, timeSlots);
   const overlappingItems = timeSlots.filter(
     (s, i) =>
       (start <= s.start && start <= s.end && end >= s.start && end <= s.end) || // top overlap
@@ -169,7 +169,7 @@ export function getMergedTimeslots(newTimeSlot: ITimeSlot, timeslots: ITimeSlot[
     const filteredSlots = timeslots.filter((item) => !overlappingIds.includes(item.id));
 
     const mergedSlots = [mergedSlot, ...filteredSlots];
-    console.log({ mergedSlot, mergedSlots });
+    // console.log({ mergedSlot, mergedSlots });
 
     return { mergedSlots, newSlot: mergedSlot };
   } else {
@@ -219,14 +219,15 @@ export const getScreenHeight = () => {
   return Math.min(...heights);
 };
 
-export function createRippleEffect(x: number, y: number, el: HTMLDivElement) {
+export function createRippleEffect(x: number, y: number, el: HTMLDivElement, isSmall = false) {
   const ripple = document.createElement("span");
+  ripple.id = isSmall ? "col-ripple" : "slot-ripple";
   ripple.style.left = x + "px";
   ripple.style.top = y + "px";
 
   el.appendChild(ripple);
 
-  console.log("createRippleEffect", { x, y, ripple });
+  // console.log("createRippleEffect", { x, y, ripple });
 
   setTimeout(() => {
     ripple.remove();

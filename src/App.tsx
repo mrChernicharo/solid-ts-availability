@@ -10,6 +10,7 @@ const App: Component = () => {
   const [palette, setPalette] = createSignal<IPalette>("dark");
   const [colHeight, setColHeight] = createSignal(1000);
   const [colWidth, setColWidth] = createSignal(100);
+  const [sideBarWidth, setSideBarWidth] = createSignal(80);
   const [widgetHeight, setWidgetHeight] = createSignal(500);
   const [headerHeight, setHeaderHeight] = createSignal(50);
   const [firstDay, setFirstDay] = createSignal<IWeekday>("Mon");
@@ -152,6 +153,15 @@ const App: Component = () => {
             onChange={(e) => setHeaderHeight(+e.currentTarget.value)}
           />
 
+          <label for="sidebar_width">sideBar Width</label>
+          <input
+            id="sidebar_width"
+            type="number"
+            style={{ width: "60px", ...inputStyle() }}
+            value={sideBarWidth()}
+            onChange={(e) => setSideBarWidth(+e.currentTarget.value)}
+          />
+
           <label for="col_width">col_width</label>
           <input
             id="col_width"
@@ -176,7 +186,7 @@ const App: Component = () => {
         headerHeight={headerHeight()}
         colHeight={colHeight()}
         colWidth={colWidth()}
-        sideBarWidth={80}
+        sideBarWidth={sideBarWidth()}
         snapTo={snap()}
         onChange={(val: any) => setValue(val)}
       />
