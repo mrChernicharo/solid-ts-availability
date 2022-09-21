@@ -59,6 +59,7 @@ interface IProps {
 
 export default function AvailabilityWidget(props: IProps) {
   let widgetRef!: HTMLDivElement;
+  let topBarRef!: HTMLDivElement;
   // let containerRef!: HTMLDivElement;
   // let modalRef!: HTMLDivElement;
   let last: { x: number; y: number } | null;
@@ -95,21 +96,49 @@ export default function AvailabilityWidget(props: IProps) {
     return Math.min(...heights);
   };
 
-  const updateWidgetBounds = () => {
-    setWidgetTop(widgetRef.getBoundingClientRect().top + (document.scrollingElement?.scrollTop || 0));
+  const updateWidgetBounds = (e: any) => {
+    const widgetAbsTop = widgetRef.getBoundingClientRect().top + (document.scrollingElement?.scrollTop || 0);
+    setWidgetTop(widgetAbsTop);
     setWidgetLeft(widgetRef.getBoundingClientRect().left);
+
+    if (e.isTrusted) {
+      console.log(topBarRef.getBoundingClientRect().top, document.scrollingElement?.scrollTop, widgetTop);
+
+      if (document.scrollingElement?.scrollTop! > widgetAbsTop) {
+        if (getComputedStyle(topBarRef).position !== "fixed") {
+          topBarRef.style.position = "fixed";
+          widgetRef.style.paddingTop = props.headerHeight + "px";
+
+          widgetRef.scrollTo({ left: widgetRef.scrollLeft - 1, behavior: "smooth" });
+        }
+      } else {
+        if (getComputedStyle(topBarRef).position !== "sticky") {
+          topBarRef.style.position = "sticky";
+          widgetRef.style.paddingTop = "0px";
+          widgetRef.scrollTo({ left: widgetRef.scrollLeft + 1, behavior: "smooth" });
+        }
+      }
+    }
   };
+
   const updateWidgetWidth = () => {
+    const maxScreenW = () => getScreenWidth() * 0.96;
+
     const wWidth = () => {
       if (props.widgetHeight > props.colHeight + props.headerHeight) {
         return props.colWidth * (props.dayCols.length + 0.5);
       } else {
-        // return props.colWidth * (props.dayCols.length + 0.5) + SCROLL_BAR;
         return props.colWidth * (props.dayCols.length + 0.5) + getScrollbarWidth(widgetRef, "y");
       }
     };
 
-    setWidgetWidth(Math.min(wWidth(), getScreenWidth() * 0.96));
+    if (maxScreenW() < wWidth()) {
+      setWidgetWidth(maxScreenW); // whole widget fits the screen
+      widgetRef.style.overflowY = "auto";
+    } else {
+      setWidgetWidth(wWidth()); // widget larger than screen
+      widgetRef.style.overflowX = "auto";
+    }
   };
 
   const isModalOpen = () =>
@@ -153,7 +182,7 @@ export default function AvailabilityWidget(props: IProps) {
   const observer = new ResizeObserver(updateWidgetWidth);
 
   onMount(() => {
-    updateWidgetBounds();
+    updateWidgetBounds({});
     document.addEventListener("scroll", updateWidgetBounds);
     observer.observe(document.body);
   });
@@ -330,7 +359,15 @@ export default function AvailabilityWidget(props: IProps) {
     >
       <main
         ref={widgetRef}
-        class="mx-auto my-0 overflow-auto flex flex-col whitespace-nowrap"
+        class="mx-auto my-0 flex flex-col whitespace-nowrap"
+        onScroll={(e) => {
+          if (getComputedStyle(topBarRef).position === "fixed") {
+            topBarRef.style.transform = `translateX(-${widgetRef.scrollLeft}px)`;
+          }
+          if (getComputedStyle(topBarRef).position === "sticky") {
+            topBarRef.style.transform = `translateX(0px)`;
+          }
+        }}
         style={{
           height: `${props.widgetHeight + getScrollbarWidth(widgetRef, "x") + 2}px`,
           width: `${widgetWidth()}px`,
@@ -340,6 +377,7 @@ export default function AvailabilityWidget(props: IProps) {
       >
         {/* ********* TOP BAR ********** */}
         <div
+          ref={topBarRef}
           class="sticky inline-flex top-0 z-10 opacity-80 select-none"
           style={{
             height: `${props.headerHeight}px`,
