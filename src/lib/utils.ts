@@ -142,6 +142,8 @@ export function snapTime(time: number, snapFactor: number) {
 }
 
 export function findOverlappingSlots(start: number, end: number, timeSlots: ITimeSlot[]) {
+  if (!timeSlots) return [];
+
   // console.log(start, end, timeSlots);
   const overlappingItems = timeSlots.filter(
     (s, i) =>

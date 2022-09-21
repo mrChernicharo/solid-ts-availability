@@ -109,6 +109,7 @@ export default function AvailabilityWidget(props) {
     setWidgetTop(widgetAbsTop);
     setWidgetLeft(widgetRef.getBoundingClientRect().left);
   };
+
   const handleDocumentScroll = (ref) => {
     const crossedX =
       document.scrollingElement!.scrollLeft >= ref.getBoundingClientRect().left + document.scrollingElement!.scrollLeft;
@@ -161,10 +162,10 @@ export default function AvailabilityWidget(props) {
     }
   });
 
-  createEffect(() => {
-    props.colHeight, props.colWidth, props.widgetHeight, props.headerHeight;
-    updateWidgetWidth();
-  });
+  // createEffect(() => {
+  //   props.colHeight, props.colWidth, props.widgetHeight, props.headerHeight;
+  //   updateWidgetWidth();
+  // });
 
   createEffect(() => {
     props.onChange(store);
@@ -174,7 +175,9 @@ export default function AvailabilityWidget(props) {
   createPointerListeners({
     target: () => gridRef()!,
     onUp: ({ x, y }) => {
-      // console.log("up");
+      console.log(x);
+      if (x < props.sideBarWidth + widgetRef.getBoundingClientRect().left) return; // prevent modal opening on sideBar click
+
       timeDiff = Date.now() - timestamp;
 
       setStore("lastWindowPos", { x, y });
