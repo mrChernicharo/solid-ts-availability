@@ -1,0 +1,97 @@
+body {
+  background: #f5f7fa;
+  height: 400vh;
+}
+
+.widget {
+  background: #efefef;
+  width: min(96vw, 1032px);
+  margin: 0 auto;
+}
+
+.wrap {
+  position: relative;
+  overscroll-behavior: contain;
+}
+
+.headers {
+  top: 0;
+  position: -webkit-sticky;
+  position: sticky;
+  z-index: 1000;
+  box-shadow: 0px 4px 8px -4px #999;
+}
+
+.grid,
+.scroller {
+  display: flex;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scroller {
+  overflow-x: hidden;
+}
+
+.grid {
+  position: relative;
+  overflow: auto;
+  border-width: 1px 0;
+  height: 500px;
+  scroll-snap-type: x proximity;
+}
+
+.scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.track {
+  scroll-snap-align: start;
+  flex: 1 0 200px;
+}
+
+.track + .track {
+  margin-left: -1px;
+}
+
+.time {
+  position: sticky;
+  left: 0;
+  z-index: 100;
+  flex: 1 0 70px;
+}
+
+.heading {
+  height: 50px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  border-left: 1px solid #fff;
+  z-index: 1;
+  background: #efefef;
+  font-weight: 700;
+}
+
+.track.time .heading {
+  box-shadow: 0px 12px 10px 2px #999;
+}
+
+.grid .track.time {
+  box-shadow: 2px 0px 10px #999;
+  height: 1400px;
+}
+
+.entry {
+  border: 1px solid #ebebeb;
+  border-top: 0;
+  background: #fff;
+  height: 100px;
+  text-align: center;
+}
+
+.track.time.time .entry {
+  align-items: flex-start;
+}
