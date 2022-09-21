@@ -1,76 +1,51 @@
 import { createPerPointerListeners, createPointerListeners } from "@solid-primitives/pointer";
-import {
-  batch,
-  Component,
-  createEffect,
-  createMemo,
-  createSignal,
-  For,
-  onCleanup,
-  onMount,
-  Show,
-  Match,
-  Switch,
-} from "solid-js";
-import { createStore } from "solid-js/store";
-import { Portal } from "solid-js/web";
-import {
-  DEFAULT_SLOT_DURATION,
-  INITIAL_STORE,
-  MIN_SLOT_DURATION,
-  MODAL_TYPES,
-  SCROLL_BAR,
-  THEME,
-} from "./lib/constants";
-import { IWeekday, IPalette, IStore, ITimeSlot } from "./lib/types";
-import { FiCalendar, FiCheck, FiDelete, FiLayers, FiPlus, FiTrash, FiX } from "solid-icons/fi";
-import { FaSolidCalendarPlus, FaSolidGrip, FaSolidGripLines } from "solid-icons/fa";
+import { batch, createEffect, createMemo, createSignal, For, Match, onCleanup, onMount, Show, Switch } from "solid-js";
+import { DEFAULT_SLOT_DURATION, MIN_SLOT_DURATION, MODAL_TYPES, THEME, WEEKDAYS } from "./lib/constants";
+import { IStore, ITimeSlot, IWeekday } from "./lib/types";
+// @ts-ignore
+import idMaker from "@melodev/id-maker";
 import {
   createRippleEffect,
   findOverlappingSlots,
   getLocaleHours,
   getMergedTimeslots,
+  getObjWithOmittedProps,
+  getScreenHeight,
+  getScreenWidth,
   getScrollbarWidth,
   getWeekDays,
-  hasScrollbar,
   readableTime,
   snapTime,
   timeToYPos,
   yPosToTime,
-  getObjWithOmittedProps,
 } from "./lib/utils";
-// @ts-ignore
-import idMaker from "@melodev/id-maker";
-import { store, setStore } from "./store";
-interface IProps {
-  locale: string;
-  dayCols: IWeekday[];
-  firstDay: IWeekday;
-  open: boolean;
-  minHour: number;
-  maxHour: number;
-  widgetHeight: number;
-  headerHeight: number;
-  colHeight: number;
-  colWidth: number;
-  snapTo: number;
-  onChange: any;
-  palette: IPalette;
-}
+import { store, setStore } from "./lib/store";
+import { FaSolidCalendarPlus, FaSolidGrip } from "solid-icons/fa";
+import { FiX, FiLayers, FiCheck, FiTrash } from "solid-icons/fi";
+import { Portal } from "solid-js/web";
 
-export default function AvailabilityWidget(props: IProps) {
+export default function AvailabilityWidget(props) {
   let widgetRef!: HTMLDivElement;
-  let topBarRef!: HTMLDivElement;
-  // let containerRef!: HTMLDivElement;
-  // let modalRef!: HTMLDivElement;
   let last: { x: number; y: number } | null;
-  const [containerRef, setContainerRef] = createSignal<HTMLDivElement>();
+  const [gridRef, setGridRef] = createSignal<HTMLDivElement>();
   const [modalRef, setModalRef] = createSignal<HTMLDivElement>();
 
   let timeDiff = 0;
   let timestamp = Date.now();
 
-  const HOURS = createMemo(() => getLocaleHours(props.minHour, props.maxHour, props.locale));
+  const [sideBarStickyX, setSideBarStickyX] = createSignal(0);
+  const [headerStickyY, setHeaderStickyY] = createSignal(0);
+
+  const [widgetWidth, setWidgetWidth] = createSignal(0);
+  const [widgetTop, setWidgetTop] = createSignal(0);
+  const [widgetLeft, setWidgetLeft] = createSignal(0);
+
+  const [modalTop, setModalTop] = createSignal(0);
+  const [modalLeft, setModalLeft] = createSignal(0);
+  const [modalHeight, setModalHeight] = createSignal(0);
+  const [modalWidth, setModalWidth] = createSignal(0);
+
+  const HOURS = createMemo(() => getLocaleHours(props.minHour, props.maxHour, "pt-BR"));
   const DAY_COLS = () => getWeekDays(props.dayCols, { firstDay: props.firstDay }) as IWeekday[];
 
   const yToTime = (y: number) => yPosToTime(y, props.minHour, props.maxHour, props.colHeight);
@@ -83,68 +58,6 @@ export default function AvailabilityWidget(props: IProps) {
   const getOverlappingSlots = (clickTime: number) => findOverlappingSlots(clickTime, clickTime, store[store.day!]);
   const getNearbySlots = (clickTime: number) =>
     findOverlappingSlots(clickTime - props.snapTo, clickTime + props.snapTo, store[store.day!]);
-
-  const getScreenWidth = () => {
-    const widths = [window.innerWidth];
-    if (window.screen?.width) widths.push(window.screen?.width);
-
-    return Math.min(...widths);
-  };
-  const getScreenHeight = () => {
-    const heights = [window.innerHeight];
-    if (window.screen?.height) heights.push(window.screen?.height);
-
-    return Math.min(...heights);
-  };
-
-  const updateWidgetBounds = (e: any) => {
-    const widgetAbsTop = widgetRef.getBoundingClientRect().top + (document.scrollingElement?.scrollTop || 0);
-    setWidgetTop(widgetAbsTop);
-    setWidgetLeft(widgetRef.getBoundingClientRect().left);
-
-    if (e.isTrusted) {
-      // console.log(topBarRef.getBoundingClientRect().top, document.scrollingElement?.scrollTop, widgetTop);
-
-      if (document.scrollingElement?.scrollTop! > widgetAbsTop) {
-        if (getComputedStyle(topBarRef).position !== "fixed") {
-          topBarRef.style.position = "fixed";
-          widgetRef.style.paddingTop = props.headerHeight + "px";
-
-          widgetRef.scrollTo({ left: widgetRef.scrollLeft - 1, behavior: "smooth" });
-        }
-      } else {
-        if (getComputedStyle(topBarRef).position !== "sticky") {
-          topBarRef.style.position = "sticky";
-          widgetRef.style.paddingTop = "0px";
-          widgetRef.scrollTo({ left: widgetRef.scrollLeft + 1, behavior: "smooth" });
-        }
-      }
-    }
-  };
-
-  const updateWidgetWidth = () => {
-    const maxScreenW = () => getScreenWidth() * 0.96;
-
-    const wWidth = () => {
-      if (props.widgetHeight > props.colHeight + props.headerHeight) {
-        return props.colWidth * (props.dayCols.length + 0.5);
-      } else {
-        return props.colWidth * (props.dayCols.length + 0.5) + getScrollbarWidth(widgetRef, "y");
-      }
-    };
-
-    if (maxScreenW() < wWidth()) {
-      setWidgetWidth(maxScreenW()); // whole widget fits the screen
-      widgetRef.style.overflowY = "auto";
-    } else {
-      setWidgetWidth(wWidth()); // widget larger than screen
-      widgetRef.style.overflowX = "auto";
-    }
-  };
-
-  const isModalOpen = () =>
-    store.modal.create || store.modal.merge || store.modal.details || store.modal.confirm || store.modal.drop;
-
   const createNewTimeSlot = (day: IWeekday, time: number) => {
     let [start, end] = [Math.round(time - DEFAULT_SLOT_DURATION / 2), Math.round(time + DEFAULT_SLOT_DURATION / 2)];
 
@@ -169,39 +82,79 @@ export default function AvailabilityWidget(props: IProps) {
     return newTimeSlot;
   };
 
-  const [widgetWidth, setWidgetWidth] = createSignal(0);
-  const [widgetTop, setWidgetTop] = createSignal(0);
-  const [widgetLeft, setWidgetLeft] = createSignal(0);
+  const isModalOpen = () =>
+    store.modal.create || store.modal.merge || store.modal.details || store.modal.confirm || store.modal.drop;
 
-  const [modalTop, setModalTop] = createSignal(0);
-  const [modalLeft, setModalLeft] = createSignal(0);
-  const [modalHeight, setModalHeight] = createSignal(0);
-  const [modalWidth, setModalWidth] = createSignal(0);
+  const updateWidgetWidth = () => {
+    const maxScreenW = () => getScreenWidth() * 0.96;
 
-  // const [store, setStore] = createStore<IStore>(INITIAL_STORE);
+    const wWidth = () => {
+      if (props.widgetHeight > props.colHeight + props.headerHeight) {
+        return props.colWidth * props.dayCols.length + props.sideBarWidth;
+      } else {
+        return props.colWidth * props.dayCols.length + props.sideBarWidth + getScrollbarWidth(widgetRef, "y");
+      }
+    };
 
+    if (maxScreenW() < wWidth()) {
+      // console.log("doesn't fit");
+      setWidgetWidth(maxScreenW()); // widget larger than screen
+    } else {
+      // console.log("fits");
+      setWidgetWidth(wWidth()); // whole widget fits the screen
+    }
+  };
+  const updateWidgetBounds = () => {
+    const widgetAbsTop = widgetRef.getBoundingClientRect().top + (document.scrollingElement?.scrollTop || 0);
+    setWidgetTop(widgetAbsTop);
+    setWidgetLeft(widgetRef.getBoundingClientRect().left);
+  };
+  const handleDocumentScroll = (ref) => {
+    const crossedX =
+      document.scrollingElement!.scrollLeft >= ref.getBoundingClientRect().left + document.scrollingElement!.scrollLeft;
+
+    const crossedY =
+      document.scrollingElement!.scrollTop >= ref.getBoundingClientRect().top + document.scrollingElement!.scrollTop;
+
+    if (crossedY) {
+      setHeaderStickyY(-ref.getBoundingClientRect().top);
+    } else {
+      setHeaderStickyY(0);
+    }
+    if (crossedX) {
+      setSideBarStickyX(-ref.getBoundingClientRect().left);
+    } else {
+      setSideBarStickyX(0);
+    }
+  };
+
+  // LIFECYCLE EFFECTS
   const observer = new ResizeObserver(updateWidgetWidth);
-
   onMount(() => {
-    updateWidgetBounds({});
-    document.addEventListener("scroll", updateWidgetBounds);
+    document.addEventListener("scroll", (e) => handleDocumentScroll(widgetRef));
     observer.observe(document.body);
   });
 
   onCleanup(() => {
-    document.removeEventListener("scroll", updateWidgetBounds);
     observer.unobserve(document.body);
+  });
+
+  createEffect(() => {
+    updateWidgetWidth();
+    updateWidgetBounds();
   });
 
   createEffect(() => {
     if (isModalOpen()) {
       setModalTop((p) =>
         store.lastWindowPos.y < getScreenHeight() / 2
-          ? store.lastWindowPos.y + (document.scrollingElement?.scrollTop || 0)
-          : store.lastWindowPos.y + (document.scrollingElement?.scrollTop || 0) - modalHeight()
+          ? store.lastWindowPos.y + document.scrollingElement!.scrollTop
+          : store.lastWindowPos.y + document.scrollingElement!.scrollTop - modalHeight()
       );
       setModalLeft((p) =>
-        store.lastWindowPos.x < getScreenWidth() / 2 ? store.lastWindowPos.x : store.lastWindowPos.x - modalWidth()
+        store.lastWindowPos.x < getScreenWidth() / 2
+          ? store.lastWindowPos.x + document.scrollingElement!.scrollLeft
+          : store.lastWindowPos.x + document.scrollingElement!.scrollLeft - modalWidth()
       );
       setModalHeight(modalRef()!.getBoundingClientRect().height);
       setModalWidth(modalRef()!.getBoundingClientRect().width);
@@ -209,37 +162,17 @@ export default function AvailabilityWidget(props: IProps) {
   });
 
   createEffect(() => {
-    // console.log({
-    //   widgetWidth: widgetWidth(),
-    //   widgetLeft: widgetLeft(),
-    //   widgetTop: widgetTop(),
-    // });
-    console.log({
-      modalLeft: modalLeft(),
-      modalTop: modalTop(),
-      modalHeight: modalHeight(),
-      modalWidth: modalWidth(),
-    });
+    props.colHeight, props.colWidth, props.widgetHeight, props.headerHeight;
+    updateWidgetWidth();
   });
 
   createEffect(() => {
     props.onChange(store);
   });
 
-  createEffect(() => {
-    props.colHeight, props.colWidth, props.widgetHeight, props.headerHeight;
-    console.log({
-      xScroll: hasScrollbar(widgetRef, "x"),
-      yScroll: hasScrollbar(widgetRef, "y"),
-      xScrollHeight: getScrollbarWidth(widgetRef, "x"),
-      yScrollWidget: getScrollbarWidth(widgetRef, "y"),
-    });
-
-    updateWidgetWidth();
-  });
-
+  // GRID POINTER LISTENER
   createPointerListeners({
-    target: () => containerRef()!,
+    target: () => gridRef()!,
     onUp: ({ x, y }) => {
       console.log("up");
 
@@ -266,6 +199,7 @@ export default function AvailabilityWidget(props: IProps) {
     },
   });
 
+  // DOCUMENT POINTER LISTENER
   createPointerListeners({
     target: () => document.body,
     onDown: ({ x, y }) => {
@@ -273,7 +207,6 @@ export default function AvailabilityWidget(props: IProps) {
       timestamp = Date.now();
     },
     onUp: ({ x, y }) => {
-      // console.log("up");
       setTimeout(() => setStore("gesture", "idle"), 100);
       last = null;
 
@@ -360,84 +293,82 @@ export default function AvailabilityWidget(props: IProps) {
     >
       <main
         ref={widgetRef}
-        class="mx-auto my-0 flex flex-col whitespace-nowrap"
-        onScroll={(e) => {
-          if (getComputedStyle(topBarRef).position === "fixed") {
-            topBarRef.style.transform = `translateX(-${widgetRef.scrollLeft}px)`;
-          }
-          if (getComputedStyle(topBarRef).position === "sticky") {
-            topBarRef.style.transform = `translateX(0px)`;
-          }
-        }}
+        class="widget overflow-scroll"
         style={{
-          height: `${props.widgetHeight + getScrollbarWidth(widgetRef, "x") + 2}px`,
           width: `${widgetWidth()}px`,
-          background: `${THEME[props.palette].bg}`,
-          color: `${THEME[props.palette].text}`,
+          height: props.widgetHeight + "px",
         }}
       >
-        {/* ********* TOP BAR ********** */}
-        <div
-          ref={topBarRef}
-          class="sticky inline-flex top-0 z-10 opacity-80 select-none"
+        {/* TOP BAR */}
+        <header
+          class="header sticky top-0 flex z-10"
           style={{
-            height: `${props.headerHeight}px`,
-            width: `${(props.dayCols.length + 0.5) * props.colWidth}px`,
-            background: `${THEME[props.palette].primary2}`,
+            width: props.colWidth * 7 + props.sideBarWidth + "px",
+            translate: `0px ${headerStickyY()}px`,
+            background: THEME[props.palette].accent2,
           }}
         >
-          <div class="inline-flex" style={{ width: `${props.colWidth / 2}px` }}></div>
+          <div style={{ width: props.sideBarWidth + "px" }}></div>
           <For each={DAY_COLS()}>
-            {(day) => (
+            {(weekday) => (
               <div
-                class="border-l-[1px] inline-flex justify-center items-center whitespace-normal overflow-clip"
-                style={{ height: `${props.headerHeight}px`, width: `${props.colWidth}px` }}
+                class="border-l-[1px] flex justify-center items-center"
+                style={{
+                  height: props.headerHeight + "px",
+                  width: props.colWidth + "px",
+                  "border-color": THEME[props.palette].lightText,
+                }}
               >
-                {day}
+                {weekday}
               </div>
             )}
           </For>
-        </div>
+        </header>
 
-        {/* *********** COLUMNS WRAPPER ************ */}
-        <div class="inline-flex" style={{ width: `${(props.dayCols.length + 0.5) * props.colWidth}px` }}>
-          {/* ********* SIDE BAR ********** */}
-          <div
-            class="sticky inline-block left-0 z-[5] opacity-80 select-none"
-            style={{
-              height: `${props.colHeight}px`,
-              width: `${props.colWidth / 2}px`,
-              background: `${THEME[props.palette].accent2}`,
-            }}
-          >
-            <For each={HOURS()}>
-              {(hour) => (
-                <div
-                  class="relative text-sm border-b-[1px] flex justify-center items-center whitespace-normal overflow-clip"
-                  style={{ height: `${props.colHeight / HOURS().length}px` }}
-                >
-                  <div class="absolute top-0">{hour}</div>
-                </div>
-              )}
-            </For>
-          </div>
+        <div
+          class="main flex"
+          style={{ width: props.colWidth * 7 + props.sideBarWidth + "px", background: THEME[props.palette].bg2 }}
+        >
+          {/* SIDE BAR */}
+          <aside class="sidebar sticky left-0" style={{ translate: `${sideBarStickyX()}px 0px` }}>
+            <div
+              class="absolute z-20"
+              style={{ width: props.sideBarWidth + "px", background: THEME[props.palette].primary2 }}
+            >
+              <For each={HOURS()}>
+                {(hour, i) => (
+                  <div
+                    class="ml-[1px] flex justify-center"
+                    style={{
+                      "border-color": THEME[props.palette].lightText,
+                      "border-top": i() ? `1px solid` : "",
+                      height: props.colHeight / (props.maxHour - props.minHour) + "px",
+                    }}
+                  >
+                    {hour}
+                  </div>
+                )}
+              </For>
+            </div>
+          </aside>
 
-          {/* ********* TIME GRID ********** */}
-          <div
-            ref={setContainerRef}
-            class="relative inline-block"
-            style={{ height: `${props.colHeight}px`, width: `${props.dayCols.length * props.colWidth}px` }}
+          {/* GRID */}
+          <section
+            ref={setGridRef}
+            class="columns sticky top-0 flex"
+            style={{ width: props.colWidth * 7 + props.sideBarWidth + "px" }}
           >
-            {/* ********* DAY COLS ********** */}
+            <div class="shim" style={{ width: props.sideBarWidth + "px" }}></div>
             <For each={DAY_COLS()}>
-              {(day, colIdx) => {
+              {(weekday, dayIdx) => {
                 let columnRef!: HTMLDivElement;
 
+                // COLUMN POINTER LISTENER
                 createPerPointerListeners({
                   target: () => columnRef,
                   onEnter(e, { onDown, onUp }) {
                     onDown(({ x, y, offsetX, offsetY }) => {
-                      setStore("day", day);
+                      setStore("day", weekday);
                       console.log({ target: e.target });
                       // createRippleEffect(offsetX, offsetY, columnRef);
                     });
@@ -446,19 +377,17 @@ export default function AvailabilityWidget(props: IProps) {
 
                 return (
                   <div
+                    class="column relative border-l-[1px]"
                     ref={columnRef}
-                    data-column={day}
-                    class="absolute inline-block z-[2] border-l-[1px] overflow-clip"
                     style={{
                       "border-color": THEME[props.palette].lightText,
-                      width: `${props.colWidth - 1}px`,
-                      height: `${props.colHeight}px`,
-                      left: `${props.colWidth * colIdx()}px`,
+                      width: props.colWidth + "px",
+                      height: props.colHeight + "px",
                     }}
                   >
                     {/* ********* TIME SLOTS ************ */}
-                    <For each={store[day]}>
-                      {(slot, idx) => {
+                    <For each={store[weekday]}>
+                      {(slot) => {
                         let slotRef!: HTMLDivElement;
                         let middleRef!: HTMLDivElement;
                         let topRef!: HTMLDivElement;
@@ -484,12 +413,23 @@ export default function AvailabilityWidget(props: IProps) {
                         // TOP LISTENER
                         createPointerListeners({
                           target: () => topRef,
-                          onDown: (e) => setStore("gesture", "drag:top"),
+                          onDown: ({ offsetX, offsetY, target }) => {
+                            batch(() => {
+                              setStore("gesture", "drag:top");
+                              createRippleEffect(offsetX, offsetY, topRef);
+                            });
+                          },
                         });
                         // BOTTOM LISTENER
                         createPointerListeners({
                           target: () => bottomRef,
-                          onDown: (e) => setStore("gesture", "drag:bottom"),
+                          // onDown: (e) => setStore("gesture", "drag:bottom"),
+                          onDown: ({ offsetX, offsetY, target }) => {
+                            batch(() => {
+                              setStore("gesture", "drag:bottom");
+                              createRippleEffect(offsetX, offsetY, bottomRef);
+                            });
+                          },
                         });
 
                         const height = createMemo(() => `${timeToY(slot.end) - timeToY(slot.start)}px`);
@@ -505,16 +445,14 @@ export default function AvailabilityWidget(props: IProps) {
                             style={{
                               top: top(),
                               background: THEME[props.palette].primary2,
-                              left: `calc(${margin()} + 0.5px)`,
-                              width: `calc(100% - calc(${margin()} * 2))`,
+                              left: `calc(${margin()} )`,
+                              width: `calc(${props.colWidth}px - calc(${margin()} * 2))`,
                             }}
                           >
                             <div
                               ref={topRef}
                               class="absolute flex justify-center w-1/2 top-0 left-0 opacity-60"
-                              style={{
-                                "touch-action": "none",
-                              }}
+                              style={{ "touch-action": "none" }}
                             >
                               <FaSolidGrip class="opacity-50 mt-[2px]" />
                             </div>
@@ -524,16 +462,12 @@ export default function AvailabilityWidget(props: IProps) {
                               style={{ "touch-action": "none", "user-select": "none", height: height() }}
                             >
                               <p>{`${readable(slot.start)} - ${readable(slot.end)}`}</p>
-                              {/* <p>{store.slotId === slot.id ? store.gesture : "idle"}</p> */}
+                              <p>{store.slotId === slot.id ? store.gesture : "idle"}</p>
                             </div>
                             <div
                               ref={bottomRef}
                               class="absolute flex justify-center w-1/2 bottom-0 right-0 opacity-60"
-                              style={{
-                                "touch-action": "none" /**
-                                 height: "min(50%, 16px)"
-                              */,
-                              }}
+                              style={{ "touch-action": "none" }}
                             >
                               <FaSolidGrip class="opacity-50 mb-[2px]" />
                             </div>
@@ -544,13 +478,14 @@ export default function AvailabilityWidget(props: IProps) {
 
                     {/* ********* HOUR LINES ********** */}
                     <For each={HOURS()}>
+                      {/* <For each={HOURS().filter((h, i) => !!i)}> */}
                       {(hour, hourIdx) => (
                         <div
                           class="absolute h-[1px] pointer-events-none z-[-1]"
                           style={{
                             top: `${(props.colHeight / HOURS().length) * hourIdx()}px`,
-                            width: `${props.colWidth}px`,
-                            background: `${THEME[props.palette].lightText}`,
+                            width: `${props.colWidth - 1}px`,
+                            background: !!hourIdx() ? `${THEME[props.palette].lightText}` : "transparent",
                           }}
                         ></div>
                       )}
@@ -678,7 +613,7 @@ export default function AvailabilityWidget(props: IProps) {
                 ></div>
               </Show>
             </Portal>
-          </div>
+          </section>
         </div>
       </main>
     </Show>

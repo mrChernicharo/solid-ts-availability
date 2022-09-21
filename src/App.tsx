@@ -3,8 +3,6 @@ import AvailabilityWidget from "./AvailabilityWidget";
 import { SNAP_OPTIONS, THEME, WEEKDAYS } from "./lib/constants";
 import { getObjWithOmittedProps } from "./lib/utils";
 import { IPalette, IWeekday } from "./lib/types";
-import WidgetLayout from "./WidgetLayout";
-import Layout2 from "./Layout2";
 
 const App: Component = () => {
   const [isOpen, setIsOpen] = createSignal(true);
@@ -166,13 +164,7 @@ const App: Component = () => {
       </section>
       <br />
       <br />
-      <br />
-      <br />
-      <br />
-      <br />
-      <br />
-      <br />
-      <Layout2
+      <AvailabilityWidget
         locale={locale()}
         dayCols={cols()} // omit days if you want, order doesn't matter, repeated items don't matter
         firstDay={firstDay()} // first dayColumn
@@ -188,23 +180,6 @@ const App: Component = () => {
         snapTo={snap()}
         onChange={(val: any) => setValue(val)}
       />
-      <br />
-      <br />
-      {/* <AvailabilityWidget
-        locale={locale()}
-        dayCols={cols()} // omit days if you want, order doesn't matter, repeated items don't matter
-        firstDay={firstDay()} // first dayColumn
-        palette={palette()} // light | dark
-        open={isOpen()}
-        minHour={minHour()}
-        maxHour={endHour()}
-        widgetHeight={widgetHeight()}
-        headerHeight={headerHeight()}
-        colHeight={colHeight()}
-        colWidth={colWidth()}
-        snapTo={snap()}
-        onChange={(val: any) => setValue(val)}
-      /> */}
       <br />
       <br />
       {/* <WidgetLayout /> */}
