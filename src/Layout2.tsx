@@ -1,6 +1,9 @@
-import { createMemo, createSignal, For, onMount } from "solid-js";
-import { WEEKDAYS } from "./lib/constants";
-import { getLocaleHours } from "./lib/utils";
+import { createEffect, createMemo, createSignal, For, onMount, Show } from "solid-js";
+import { createStore } from "solid-js/store";
+import { INITIAL_STORE, WEEKDAYS } from "./lib/constants";
+import { IStore } from "./lib/types";
+import { getLocaleHours, getObjWithOmittedProps, getScrollbarWidth } from "./lib/utils";
+import { store } from "./store";
 
 //     locale={locale()}
 //     dayCols={cols()} // omit days if you want, order doesn't matter, repeated items don't matter
@@ -19,12 +22,15 @@ import { getLocaleHours } from "./lib/utils";
 
 export default function Layout2(props) {
   let widgetRef!: HTMLDivElement;
+  //   const [store, setStore] = createStore<IStore>(INITIAL_STORE);
 
-  const [headerTransX, setHeaderTransX] = createSignal(0);
-  const [headerTransY, setHeaderTransY] = createSignal(0);
+  const [sideBarStickyX, setSideBarStickyX] = createSignal(0);
+  const [headerStickyY, setHeaderStickyY] = createSignal(0);
+  const [scrollbarWidth, setScrollBarWidth] = createSignal(0);
   const HOURS = createMemo(() => getLocaleHours(props.minHour, props.maxHour, "pt-BR"));
+  const widgetWidth = () => props.colWidth * 7 + props.sideBarWidth + scrollbarWidth();
 
-  const handleScrolls = (e) => {
+  const handleDocumentScroll = (e) => {
     const crossedX =
       document.scrollingElement!.scrollLeft >=
       widgetRef.getBoundingClientRect().left + document.scrollingElement!.scrollLeft;
@@ -34,33 +40,52 @@ export default function Layout2(props) {
       widgetRef.getBoundingClientRect().top + document.scrollingElement!.scrollTop;
 
     if (crossedY) {
-      setHeaderTransY(-widgetRef.getBoundingClientRect().top);
+      setHeaderStickyY(-widgetRef.getBoundingClientRect().top);
     } else {
-      setHeaderTransY(0);
+      setHeaderStickyY(0);
     }
     if (crossedX) {
-      setHeaderTransX(-widgetRef.getBoundingClientRect().left);
+      setSideBarStickyX(-widgetRef.getBoundingClientRect().left);
     } else {
-      setHeaderTransX(0);
+      setSideBarStickyX(0);
     }
   };
 
   onMount(() => {
-    document.addEventListener("scroll", handleScrolls);
+    document.addEventListener("scroll", handleDocumentScroll);
+  });
+
+  createEffect(() => {
+    setScrollBarWidth(getScrollbarWidth(widgetRef, "y")); // gotta consider resizing...sometimes scroll widths change
   });
 
   return (
-    <div class="body w-[120vw] h-[300vh]">
-      {/*  */}
+    <Show
+      when={props.open}
+      fallback={
+        <div>
+          <pre class="text-sm">
+            {JSON.stringify(
+              getObjWithOmittedProps(store, ["modal", "day", "slotId", "lastContainerPos", "lastWindowPos", "gesture"]),
+              null,
+              2
+            )}
+          </pre>
+        </div>
+      }
+    >
       <div
         ref={widgetRef}
         class="widget overflow-scroll"
-        style={{ width: "min(1032px, calc(100vw - 4rem))", height: props.widgetHeight + "px" }}
+        style={{
+          width: `min(${widgetWidth()}px, calc(100vw - 4rem))`,
+          height: props.widgetHeight + "px",
+        }}
       >
         {/*  */}
         <header
           class="header sticky top-0 flex bg-blue-400 z-10"
-          style={{ width: props.colWidth * 7 + props.sideBarWidth + "px", translate: `0px ${headerTransY()}px` }}
+          style={{ width: props.colWidth * 7 + props.sideBarWidth + "px", translate: `0px ${headerStickyY()}px` }}
         >
           <div class="shim border-l-[1px] bg-red-600" style={{ width: props.sideBarWidth + "px" }}></div>
           <For each={WEEKDAYS}>
@@ -74,7 +99,7 @@ export default function Layout2(props) {
 
         <div class="main flex bg-green-400" style={{ width: props.colWidth * 7 + props.sideBarWidth + "px" }}>
           {/*  */}
-          <aside class="sidebar sticky left-0" style={{ translate: `${headerTransX()}px 0px` }}>
+          <aside class="sidebar sticky left-0" style={{ translate: `${sideBarStickyX()}px 0px` }}>
             <div class="absolute z-20 bg-orange-400" style={{ width: props.sideBarWidth + "px" }}>
               <For each={HOURS()}>
                 {(hour, i) => (
@@ -124,6 +149,6 @@ export default function Layout2(props) {
           </div>
         </div>
       </div>
-    </div>
+    </Show>
   );
 }

@@ -10,6 +10,9 @@ html {
 body {
   /* overflow: auto; */
   /* overflow-x: hidden; */
+  height: 300vh;
+  display: flex;
+  justify-content: center;
 }
 
 /* span {

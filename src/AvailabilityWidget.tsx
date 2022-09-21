@@ -41,6 +41,7 @@ import {
 } from "./lib/utils";
 // @ts-ignore
 import idMaker from "@melodev/id-maker";
+import { store, setStore } from "./store";
 interface IProps {
   locale: string;
   dayCols: IWeekday[];
@@ -177,7 +178,7 @@ export default function AvailabilityWidget(props: IProps) {
   const [modalHeight, setModalHeight] = createSignal(0);
   const [modalWidth, setModalWidth] = createSignal(0);
 
-  const [store, setStore] = createStore<IStore>(INITIAL_STORE);
+  // const [store, setStore] = createStore<IStore>(INITIAL_STORE);
 
   const observer = new ResizeObserver(updateWidgetWidth);
 

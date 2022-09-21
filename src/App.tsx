@@ -11,7 +11,7 @@ const App: Component = () => {
 
   const [palette, setPalette] = createSignal<IPalette>("dark");
   const [colHeight, setColHeight] = createSignal(1000);
-  const [colWidth, setColWidth] = createSignal(200);
+  const [colWidth, setColWidth] = createSignal(100);
   const [widgetHeight, setWidgetHeight] = createSignal(500);
   const [headerHeight, setHeaderHeight] = createSignal(50);
   const [firstDay, setFirstDay] = createSignal<IWeekday>("Mon");
@@ -166,24 +166,6 @@ const App: Component = () => {
         </div>
       </section>
 
-      {/* <AvailabilityWidget
-        locale={locale()}
-        dayCols={cols()} // omit days if you want, order doesn't matter, repeated items don't matter
-        firstDay={firstDay()} // first dayColumn
-        palette={palette()} // light | dark
-        open={isOpen()}
-        minHour={minHour()}
-        maxHour={endHour()}
-        widgetHeight={widgetHeight()}
-        headerHeight={headerHeight()}
-        colHeight={colHeight()}
-        colWidth={colWidth()}
-        snapTo={snap()}
-        onChange={(val: any) => setValue(val)}
-      /> */}
-
-      <br />
-      <br />
       <Layout2
         locale={locale()}
         dayCols={cols()} // omit days if you want, order doesn't matter, repeated items don't matter
@@ -200,6 +182,27 @@ const App: Component = () => {
         snapTo={snap()}
         onChange={(val: any) => setValue(val)}
       />
+      <br />
+      <br />
+      <AvailabilityWidget
+        locale={locale()}
+        dayCols={cols()} // omit days if you want, order doesn't matter, repeated items don't matter
+        firstDay={firstDay()} // first dayColumn
+        palette={palette()} // light | dark
+        open={isOpen()}
+        minHour={minHour()}
+        maxHour={endHour()}
+        widgetHeight={widgetHeight()}
+        headerHeight={headerHeight()}
+        colHeight={colHeight()}
+        colWidth={colWidth()}
+        snapTo={snap()}
+        onChange={(val: any) => setValue(val)}
+      />
+
+      <br />
+      <br />
+
       {/* <WidgetLayout /> */}
 
       {/* <pre class="text-xs">
